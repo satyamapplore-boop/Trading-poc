@@ -440,7 +440,74 @@ with tab_terminal:
     """, unsafe_allow_html=True)
 
     # ── Main grid ──
-    col_ob, col_chart, col_tr = st.columns([1.1, 3.2, 1.1])
+    col_ob, col_chart, col_tr = st.columns([1.1, 2.3, 1.1])
+
+    # AI Signal Engine Logic (Calculated live on the 5m Klines + Depth)
+    signal = "NEUTRAL"
+    sig_color = "#848e9c"
+    conf = 50
+    reasons = []
+
+    if klines and len(klines) > 20:
+        closes = [float(k[4]) for k in klines]
+        volumes = [float(k[5]) for k in klines]
+        
+        # 1. Short-term trend (Simple EMA 9 vs 21 approx)
+        ema9 = pd.Series(closes).ewm(span=9, adjust=False).mean().iloc[-1]
+        ema21 = pd.Series(closes).ewm(span=21, adjust=False).mean().iloc[-1]
+        
+        # 2. RSI (14 period approx)
+        deltas = np.diff(closes[-15:])
+        gains = deltas[deltas > 0].sum()
+        losses = -deltas[deltas < 0].sum()
+        rs = 0 if losses == 0 else gains/losses
+        rsi = 100 - (100 / (1 + rs))
+
+        # 3. Orderbook Imbalance
+        asks_raw = depth.get("asks", [])[:14]
+        bids_raw = depth.get("bids", [])[:14]
+        bid_vol = sum(float(q) for _,q in bids_raw)
+        ask_vol = sum(float(q) for _,q in asks_raw)
+        tot_vol = bid_vol + ask_vol or 1
+        bid_pct = bid_vol / tot_vol
+        
+        scores = 0
+        
+        # Trend rule
+        if ema9 > ema21:
+            scores += 30
+            reasons.append("EMA 9/21 Bullish Cross")
+        else:
+            scores -= 30
+            reasons.append("EMA 9/21 Bearish Cross")
+
+        # RSI rule
+        if rsi < 30:
+            scores += 40
+            reasons.append(f"RSI Oversold ({rsi:.1f})")
+        elif rsi > 70:
+            scores -= 40
+            reasons.append(f"RSI Overbought ({rsi:.1f})")
+        else:
+            reasons.append(f"RSI Neutral ({rsi:.1f})")
+
+        # OB rule
+        if bid_pct > 0.6:
+            scores += 30
+            reasons.append("Heavy Buy Wall (Orderbook)")
+        elif bid_pct < 0.4:
+            scores -= 30
+            reasons.append("Heavy Sell Wall (Orderbook)")
+
+        conf = min(100, max(0, 50 + scores))
+        if conf >= 65:
+            signal, sig_color = "STRONG BUY", "#0ecb81"
+        elif conf <= 35:
+            signal, sig_color = "STRONG SELL", "#f6465d"
+        elif conf >= 55:
+            signal, sig_color = "BUY", "#0ecb81"
+        elif conf <= 45:
+            signal, sig_color = "SELL", "#f6465d"
 
     # ── Order Book ──
     with col_ob:
@@ -514,9 +581,19 @@ with tab_terminal:
         </div>
         """, unsafe_allow_html=True)
 
-    # ── Candlestick chart + order form ──
+    # ── Candlestick chart + AI Nudges + order form ──
     with col_chart:
-        st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>📊 BTC/USDT — 5m Live Candlestick</div>", unsafe_allow_html=True)
+        c_title, c_sig = st.columns([3, 2])
+        c_title.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>📊 BTC/USDT — 5m Live Candlestick</div>", unsafe_allow_html=True)
+        
+        # Render AI Signal
+        c_sig.markdown(f"""
+        <div style='background:#1f2933; border:1px solid #2b3139; border-radius:6px; padding:6px 12px; display:flex; justify-content:space-between; align-items:center;'>
+            <span style='color:#848e9c; font-size:11px; font-weight:600;'>AI NUDGE:</span>
+            <span style='color:{sig_color}; font-weight:900; font-size:14px; letter-spacing:1px;'>{signal}</span>
+            <span style='color:#fff; font-size:12px; font-weight:700;'>{conf}% Conf</span>
+        </div>
+        """, unsafe_allow_html=True)
 
         if klines:
             df = pd.DataFrame(klines, columns=["ot","o","h","l","c","v","ct","qav","nt","tbbav","tbqav","ig"])
@@ -569,8 +646,12 @@ with tab_terminal:
             st.markdown(f"<div style='font-size:11px;color:#848e9c;margin-bottom:6px;'>Total ≈ ${sp2*sa:,.2f} USDT</div>", unsafe_allow_html=True)
             st.markdown("<button class='btn-sell'>▼ Sell / Short BTC</button>", unsafe_allow_html=True)
 
-    # ── Market Trades ──
+    # ── Market Trades & AI Reasnoning ──
     with col_tr:
+        st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>🧠 AI Engine Reasoning</div>", unsafe_allow_html=True)
+        reason_html = "".join([f"<div style='font-size:11px; color:#e0e0e0; margin-bottom:4px; padding-left:8px; border-left:2px solid {sig_color};'>{r}</div>" for r in reasons])
+        st.markdown(f"<div style='background:#161a1e; border:1px solid #2b3139; border-radius:6px; padding:10px; margin-bottom:20px;'>{reason_html}</div>", unsafe_allow_html=True)
+
         st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>⚡ Live Market Trades</div>", unsafe_allow_html=True)
         tr_hdr = ("<div style='display:flex;justify-content:space-between;color:#5a6370;"
                   "font-size:10px;margin-bottom:4px;'>"
