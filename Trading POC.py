@@ -549,13 +549,40 @@ with tab_terminal:
             a = st.session_state.active_asset
             sym = a + "USDT"
             ticker = api_ticker(sym)
+            depth = api_depth(sym, 5)
             lp = float(ticker.get("lastPrice", 0)) if ticker else 0.0
+            
+            best_ask = float(depth['asks'][0][0]) if depth and depth.get('asks') else lp
+            best_bid = float(depth['bids'][0][0]) if depth and depth.get('bids') else lp
+
+            # Reset auto-sync trackers when switching coins
+            if st.session_state.get("form_asset") != a:
+                st.session_state.form_asset = a
+                st.session_state.bp = best_ask
+                st.session_state.auto_bp = best_ask
+                st.session_state.sp2 = best_bid
+                st.session_state.auto_sp2 = best_bid
+
+            # Initialize if empty
+            if "auto_bp" not in st.session_state: st.session_state.auto_bp = best_ask
+            if "auto_sp2" not in st.session_state: st.session_state.auto_sp2 = best_bid
+            if "bp" not in st.session_state: st.session_state.bp = best_ask
+            if "sp2" not in st.session_state: st.session_state.sp2 = best_bid
+
+            # Auto-sync bounds if user has not overridden them manually
+            if st.session_state.bp == st.session_state.auto_bp:
+                st.session_state.bp = best_ask
+                st.session_state.auto_bp = best_ask
+            if st.session_state.sp2 == st.session_state.auto_sp2:
+                st.session_state.sp2 = best_bid
+                st.session_state.auto_sp2 = best_bid
+
             st.markdown("<div class='card-title' style='font-size:13px;margin-top:8px;margin-bottom:8px;'>⚡ Spot Trading (Simulated)</div>", unsafe_allow_html=True)
             oc1, oc2 = st.columns(2)
             
             with oc1:
                 st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>BUY {a} &nbsp;|&nbsp; Avbl: {st.session_state.balance - st.session_state.invested:,.2f} USDT</div>", unsafe_allow_html=True)
-                bp = st.number_input("Price (USDT)", value=lp, step=0.1, format="%.4f", key="bp", min_value=0.0)
+                bp = st.number_input("Price (USDT)", step=0.1, format="%.4f", key="bp", min_value=0.0)
                 ba = st.number_input(f"Amount ({a})", value=0.01 if a in ["BTC", "ETH"] else 1.0, step=0.001 if a in ["BTC", "ETH"] else 1.0, format="%.4f", key="ba", min_value=0.0)
                 if st.button(f"▲ Buy / Long {a}", key="b_btn", use_container_width=True, type="primary"):
                     cost = bp * ba
@@ -568,11 +595,14 @@ with tab_terminal:
                         st.session_state.holdings[a] += ba
                         st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "BUY", "P&L": 0.0, "Price": bp, "Qty": ba})
                         st.session_state.notifs.insert(0, f"✅ Executed Manual BUY of {ba:.4f} {a} at ${bp:,.4f}")
+                        
+                        st.session_state.bp = best_ask
+                        st.session_state.auto_bp = best_ask
                         st.rerun()
 
             with oc2:
                 st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>SELL {a} &nbsp;|&nbsp; Avbl: {st.session_state.holdings.get(a, 0.0):.4f} {a}</div>", unsafe_allow_html=True)
-                sp2 = st.number_input("Price (USDT)", value=lp, step=0.1, format="%.4f", key="sp2", min_value=0.0)
+                sp2 = st.number_input("Price (USDT)", step=0.1, format="%.4f", key="sp2", min_value=0.0)
                 sa = st.number_input(f"Amount ({a})", value=0.01 if a in ["BTC", "ETH"] else 1.0, step=0.001 if a in ["BTC", "ETH"] else 1.0, format="%.4f", key="sa", min_value=0.0)
                 if st.button(f"▼ Sell / Short {a}", key="s_btn", use_container_width=True, type="primary"):
                     rev = sp2 * sa
@@ -582,6 +612,9 @@ with tab_terminal:
                         st.session_state.balance += rev
                         st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "SELL", "P&L": pnl, "Price": sp2, "Qty": sa})
                         st.session_state.notifs.insert(0, f"✅ Executed Manual SELL of {sa:.4f} {a} at ${sp2:,.4f}")
+                        
+                        st.session_state.sp2 = best_bid
+                        st.session_state.auto_sp2 = best_bid
                         st.rerun()
                         
         render_form()
