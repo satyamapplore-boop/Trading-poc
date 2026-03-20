@@ -126,6 +126,20 @@ div[role="tablist"] > div[data-baseweb="tab-border"]    { display:none !importan
 /* Buttons */
 .btn-buy  { background:#0ecb81; color:#0b0e11; width:100%; padding:11px; border:none; border-radius:4px; font-weight:700; cursor:pointer; font-size:14px; }
 .btn-sell { background:#f6465d; color:#fff;    width:100%; padding:11px; border:none; border-radius:4px; font-weight:700; cursor:pointer; font-size:14px; }
+
+/* ── Streamlit Primary Button Override (Orange Theme) ── */
+button[kind="primary"] {
+    background-color: #f7931a !important;
+    border-color: #f7931a !important;
+    color: #161a1e !important;
+    font-weight: 800 !important;
+    border-radius: 6px !important;
+}
+button[kind="primary"]:hover {
+    background-color: #e88612 !important;
+    border-color: #e88612 !important;
+    color: #fff !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -660,18 +674,18 @@ with tab_terminal:
 
         with oc1:
             av_u = st.session_state.balance - st.session_state.invested
-            st.markdown(f"<div style='color:#0ecb81;font-size:12px;font-weight:600;margin-bottom:4px;'>BUY BTC &nbsp;|&nbsp; Avbl: {av_u:,.2f} USDT</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>BUY BTC &nbsp;|&nbsp; Avbl: {av_u:,.2f} USDT</div>", unsafe_allow_html=True)
             bp  = st.number_input("Price (USDT)",   value=lp,  step=10.0, format="%.2f", key="bp", min_value=0.0)
             ba  = st.number_input("Amount (BTC)",   value=0.01, step=0.001, format="%.4f", key="ba", min_value=0.0)
             st.markdown(f"<div style='font-size:11px;color:#848e9c;margin-bottom:6px;'>Total ≈ ${bp*ba:,.2f} USDT</div>", unsafe_allow_html=True)
-            st.button("▲ Buy / Long BTC", key="b_btn", use_container_width=True, on_click=ex_buy)
+            st.button("▲ Buy / Long BTC", key="b_btn", use_container_width=True, on_click=ex_buy, type="primary")
             
         with oc2:
-            st.markdown(f"<div style='color:#f6465d;font-size:12px;font-weight:600;margin-bottom:4px;'>SELL BTC &nbsp;|&nbsp; Avbl: {st.session_state.btc_bag:.4f} BTC</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>SELL BTC &nbsp;|&nbsp; Avbl: {st.session_state.btc_bag:.4f} BTC</div>", unsafe_allow_html=True)
             sp2 = st.number_input("Price (USDT) ",  value=lp,  step=10.0, format="%.2f", key="sp2", min_value=0.0)
             sa  = st.number_input("Amount (BTC) ",  value=0.01, step=0.001, format="%.4f", key="sa", min_value=0.0)
             st.markdown(f"<div style='font-size:11px;color:#848e9c;margin-bottom:6px;'>Total ≈ ${sp2*sa:,.2f} USDT</div>", unsafe_allow_html=True)
-            st.button("▼ Sell / Short BTC", key="s_btn", use_container_width=True, on_click=ex_sell)
+            st.button("▼ Sell / Short BTC", key="s_btn", use_container_width=True, on_click=ex_sell, type="primary")
 
     # ── Market Trades & AI Reasnoning ──
     with col_tr:
