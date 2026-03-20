@@ -146,6 +146,12 @@ button[kind="primary"]:hover {
     opacity: 1 !important;
     transition: none !important;
 }
+
+/* Fix input label visibility (e.g. Price, Amount forms) */
+[data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] div {
+    color: #ffffff !important;
+    font-weight: 500 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
