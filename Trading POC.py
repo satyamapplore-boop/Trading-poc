@@ -316,15 +316,44 @@ tab_portfolio, tab_terminal, tab_risk, tab_wallet = st.tabs([
 ])
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Notifications (shared across all tabs)
+# Global Logs & Notifications (shared across all tabs)
 # ─────────────────────────────────────────────────────────────────────────────
-with st.expander("🔔 Active Engine Notifications", expanded=False):
-    for n in st.session_state.notifs:
-        st.markdown(
-            f"<div style='font-size:.8rem;background:#161a1e;padding:8px;border-radius:4px;"
-            f"margin-bottom:5px;border-left:2px solid #0ecb81;'>{n}</div>",
-            unsafe_allow_html=True)
+@st.fragment(run_every=3)
+def render_global_logs():
+    local_hist = [t for t in st.session_state.trade_hist if t["Strategy"] == "Manual Trade"][:5]
+    if local_hist:
+        with st.expander("📖 Your Local Execution Logs (Manual)", expanded=True):
+            thtm = "<div style='font-family:monospace; font-size:12px;'>"
+            thtm += "<div style='display:flex; color:#848e9c; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #1f2933; font-weight:600;'>"
+            thtm += "<span style='width:60px'>Action</span><span style='width:60px'>Asset</span><span style='width:100px'>Price</span><span style='width:80px'>Qty</span><span style='width:100px;text-align:right'>Net PnL</span><span style='flex-grow:1;text-align:right;color:#5a6370;font-size:11px;'>Time</span></div>"
+            for t in local_hist:
+                act_col = "#0ecb81" if t['Direction']=='BUY' else "#f6465d"
+                pnl = t.get('P&L', 0)
+                pnl_str = "—" if t['Direction'] == 'BUY' else (f"+${pnl:.2f}" if pnl > 0 else f"-${abs(pnl):.2f}")
+                pnl_col = "#0ecb81" if pnl > 0 else ("#f6465d" if pnl < 0 else "#5a6370")
+                if t['Direction'] == 'BUY': pnl_col = "#5a6370"
+                price = t.get('Price', 0)
+                qty = t.get('Qty', 0)
+                
+                thtm += f"<div style='display:flex; color:#e0e0e0; padding:6px 0; border-bottom:1px solid #1a1f26; align-items:center;'>"
+                thtm += f"<span style='width:60px; color:{act_col}; font-weight:800'>{t['Direction']}</span>"
+                thtm += f"<span style='width:60px; color:#f7931a; font-weight:600'>{t['Asset']}</span>"
+                thtm += f"<span style='width:100px;'>${price:,.4f}</span>"
+                thtm += f"<span style='width:80px;'>{qty:.4f}</span>"
+                thtm += f"<span style='width:100px; text-align:right; color:{pnl_col}; font-weight:700;'>{pnl_str}</span>"
+                thtm += f"<span style='flex-grow:1; text-align:right; color:#5a6370; font-size:11px;'>{t['Time']}</span>"
+                thtm += "</div>"
+            thtm += "</div>"
+            st.markdown(thtm, unsafe_allow_html=True)
+            
+    with st.expander("🔔 Active Engine Notifications", expanded=False):
+        for n in st.session_state.notifs:
+            st.markdown(
+                f"<div style='font-size:.85rem;background:#161a1e;padding:10px;border-radius:4px;"
+                f"margin-bottom:6px;border-left:2px solid #0ecb81;color:#e0e0e0;'>{n}</div>",
+                unsafe_allow_html=True)
 
+render_global_logs()
 st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -554,33 +583,6 @@ with tab_terminal:
                         st.session_state.notifs.insert(0, f"✅ Executed Manual SELL of {sa:.4f} {a} at ${sp2:,.4f}")
                         st.rerun()
                         
-            st.markdown("<div class='card-title' style='font-size:13px;margin-top:16px;margin-bottom:8px;'>📖 Your Local Execution Logs</div>", unsafe_allow_html=True)
-            local_hist = [t for t in st.session_state.trade_hist if t["Strategy"] == "Manual Trade"][:5]
-            if local_hist:
-                thtm = "<div style='font-family:monospace; font-size:11px;'>"
-                thtm += "<div style='display:flex; color:#848e9c; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid #1f2933;'>"
-                thtm += "<span style='width:50px'>Type</span><span style='width:50px'>Asset</span><span style='width:80px'>Price</span><span style='width:65px'>Qty</span><span style='width:80px;text-align:right'>Net PnL</span></div>"
-                for t in local_hist:
-                    act_col = "#0ecb81" if t['Direction']=='BUY' else "#f6465d"
-                    pnl = t.get('P&L', 0)
-                    pnl_str = "—" if t['Direction'] == 'BUY' else (f"+${pnl:.2f}" if pnl > 0 else f"-${abs(pnl):.2f}")
-                    pnl_col = "#0ecb81" if pnl > 0 else ("#f6465d" if pnl < 0 else "#5a6370")
-                    if t['Direction'] == 'BUY': pnl_col = "#5a6370"
-                    price = t.get('Price', 0)
-                    qty = t.get('Qty', 0)
-                    
-                    thtm += f"<div style='display:flex; color:#e0e0e0; padding:4px 0; border-bottom:1px solid #1f2933;'>"
-                    thtm += f"<span style='width:50px; color:{act_col}; font-weight:700'>{t['Direction']}</span>"
-                    thtm += f"<span style='width:50px; color:#f7931a'>{t['Asset']}</span>"
-                    thtm += f"<span style='width:80px;'>${price:,.2f}</span>"
-                    thtm += f"<span style='width:65px;'>{qty:.4f}</span>"
-                    thtm += f"<span style='width:80px; text-align:right; color:{pnl_col}; font-weight:500;'>{pnl_str}</span>"
-                    thtm += "</div>"
-                thtm += "</div>"
-                st.markdown(thtm, unsafe_allow_html=True)
-            else:
-                st.markdown("<div style='font-size:11px;color:#5a6370;'>No manual trades placed yet...</div>", unsafe_allow_html=True)
-        render_form()
         # Form fragment complete
 
     with col_tr:
