@@ -158,6 +158,11 @@ button[kind="primary"]:has(p:contains("Sell")):hover {
     transform: translateY(-1px);
 }
 
+/* Global Text Color Force White */
+* {
+    color: #ffffff !important;
+}
+
 /* Eliminate Streamlit fragment update pulsing (Opacity flicker) */
 [data-testid="stVerticalBlock"], [data-testid="stHorizontalBlock"], .stElementContainer {
     opacity: 1 !important;
