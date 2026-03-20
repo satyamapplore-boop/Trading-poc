@@ -205,6 +205,7 @@ def init():
         {"Date": (datetime.now()-timedelta(days=15)).strftime("%Y-%m-%d"), "Type":"Deposit","Amount":"$500,000",  "Status":"Completed"},
     ]
     st.session_state.prices = {"BTC":69000,"ETH":3500,"BNB":590,"SOL":145,"XRP":0.62}
+    st.session_state.avg_entry = {k: v for k, v in st.session_state.prices.items()}
     strats = ["Trend Following","Mean Reversion","Momentum Trading","Cross-Exchange Arbitrage","DCA"]
     st.session_state.positions = []
     for i, a in enumerate(["BTC","ETH","SOL","BNB"]):
@@ -530,8 +531,12 @@ with tab_terminal:
                     cost = bp * ba
                     if (st.session_state.balance - st.session_state.invested) >= cost:
                         st.session_state.balance -= cost
+                        old_qty = st.session_state.holdings[a]
+                        new_qty = old_qty + ba
+                        if new_qty > 0:
+                            st.session_state.avg_entry[a] = ((old_qty * st.session_state.avg_entry[a]) + cost) / new_qty
                         st.session_state.holdings[a] += ba
-                        st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "BUY", "P&L": 0.0})
+                        st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "BUY", "P&L": 0.0, "Price": bp, "Qty": ba})
                         st.session_state.notifs.insert(0, f"✅ Executed Manual BUY of {ba:.4f} {a} at ${bp:,.4f}")
                         st.rerun()
 
@@ -542,18 +547,36 @@ with tab_terminal:
                 if st.button(f"▼ Sell / Short {a}", key="s_btn", use_container_width=True, type="primary"):
                     rev = sp2 * sa
                     if st.session_state.holdings[a] >= sa:
+                        pnl = (sp2 - st.session_state.avg_entry[a]) * sa
                         st.session_state.holdings[a] -= sa
                         st.session_state.balance += rev
-                        st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "SELL", "P&L": 0.0})
+                        st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "SELL", "P&L": pnl, "Price": sp2, "Qty": sa})
                         st.session_state.notifs.insert(0, f"✅ Executed Manual SELL of {sa:.4f} {a} at ${sp2:,.4f}")
                         st.rerun()
                         
             st.markdown("<div class='card-title' style='font-size:13px;margin-top:16px;margin-bottom:8px;'>📖 Your Local Execution Logs</div>", unsafe_allow_html=True)
-            local_hist = [t for t in st.session_state.trade_hist if t["Strategy"] == "Manual Trade"][:4]
+            local_hist = [t for t in st.session_state.trade_hist if t["Strategy"] == "Manual Trade"][:5]
             if local_hist:
-                thtm = "".join([f"<div style='font-size:11px;color:#848e9c;padding:3px 0; border-bottom:1px solid #1f2933;'>"
-                                f"<span class='{'color-up' if t['Direction']=='BUY' else 'color-down'}' style='font-weight:700'>{t['Direction']}</span> "
-                                f"{t['Asset']} • {t['Time']}</div>" for t in local_hist])
+                thtm = "<div style='font-family:monospace; font-size:11px;'>"
+                thtm += "<div style='display:flex; color:#848e9c; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid #1f2933;'>"
+                thtm += "<span style='width:50px'>Type</span><span style='width:50px'>Asset</span><span style='width:80px'>Price</span><span style='width:65px'>Qty</span><span style='width:80px;text-align:right'>Net PnL</span></div>"
+                for t in local_hist:
+                    act_col = "#0ecb81" if t['Direction']=='BUY' else "#f6465d"
+                    pnl = t.get('P&L', 0)
+                    pnl_str = "—" if t['Direction'] == 'BUY' else (f"+${pnl:.2f}" if pnl > 0 else f"-${abs(pnl):.2f}")
+                    pnl_col = "#0ecb81" if pnl > 0 else ("#f6465d" if pnl < 0 else "#5a6370")
+                    if t['Direction'] == 'BUY': pnl_col = "#5a6370"
+                    price = t.get('Price', 0)
+                    qty = t.get('Qty', 0)
+                    
+                    thtm += f"<div style='display:flex; color:#e0e0e0; padding:4px 0; border-bottom:1px solid #1f2933;'>"
+                    thtm += f"<span style='width:50px; color:{act_col}; font-weight:700'>{t['Direction']}</span>"
+                    thtm += f"<span style='width:50px; color:#f7931a'>{t['Asset']}</span>"
+                    thtm += f"<span style='width:80px;'>${price:,.2f}</span>"
+                    thtm += f"<span style='width:65px;'>{qty:.4f}</span>"
+                    thtm += f"<span style='width:80px; text-align:right; color:{pnl_col}; font-weight:500;'>{pnl_str}</span>"
+                    thtm += "</div>"
+                thtm += "</div>"
                 st.markdown(thtm, unsafe_allow_html=True)
             else:
                 st.markdown("<div style='font-size:11px;color:#5a6370;'>No manual trades placed yet...</div>", unsafe_allow_html=True)
