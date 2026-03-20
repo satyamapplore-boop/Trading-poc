@@ -47,6 +47,7 @@ html, body, .stApp, [data-testid="stAppViewContainer"], .main {
 #MainMenu, footer, [data-testid="stToolbar"],
 [data-testid="collapsedControl"], header { visibility: hidden !important; height: 0 !important; }
 [data-testid="stSidebar"] { display: none !important; }
+[data-testid="stStatusWidget"] { visibility: hidden !important; display: none !important; }
 
 div.stMarkdown p, div.stMetric { color: #e0e0e0 !important; }
 div[data-testid="stHorizontalBlock"] { background-color: transparent !important; }
@@ -170,6 +171,7 @@ def init():
     st.session_state.inited   = True
     st.session_state.balance  = 2_500_000.0
     st.session_state.invested = 1_850_000.0
+    st.session_state.btc_bag  = 5.4300
     st.session_state.prev_btc = None
     st.session_state.wallet_history = [
         {"Date": (datetime.now()-timedelta(days=30)).strftime("%Y-%m-%d"), "Type":"Deposit","Amount":"$2,000,000","Status":"Completed"},
@@ -633,18 +635,43 @@ with tab_terminal:
         # Order form
         st.markdown("<div class='card-title' style='font-size:13px;margin-top:8px;margin-bottom:8px;'>⚡ Spot Trading (Simulated)</div>", unsafe_allow_html=True)
         oc1, oc2 = st.columns(2)
+        
+        def ex_buy():
+            cost = st.session_state.bp * st.session_state.ba
+            if (st.session_state.balance - st.session_state.invested) >= cost:
+                st.session_state.balance -= cost
+                st.session_state.btc_bag += st.session_state.ba
+                st.session_state.trade_hist.insert(0, {
+                    "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Asset": "BTC", "Strategy": "Manual Trade", "Direction": "BUY", "P&L": 0.0
+                })
+                st.session_state.notifs.insert(0, f"✅ Executed Manual BUY of {st.session_state.ba:.4f} BTC at ${st.session_state.bp:,.2f}")
+                
+        def ex_sell():
+            rev = st.session_state.sp2 * st.session_state.sa
+            if st.session_state.btc_bag >= st.session_state.sa:
+                st.session_state.btc_bag -= st.session_state.sa
+                st.session_state.balance += rev
+                st.session_state.trade_hist.insert(0, {
+                    "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Asset": "BTC", "Strategy": "Manual Trade", "Direction": "SELL", "P&L": 0.0
+                })
+                st.session_state.notifs.insert(0, f"✅ Executed Manual SELL of {st.session_state.sa:.4f} BTC at ${st.session_state.sp2:,.2f}")
+
         with oc1:
-            st.markdown("<div style='color:#0ecb81;font-size:12px;font-weight:600;margin-bottom:4px;'>BUY BTC &nbsp;|&nbsp; Avbl: 2,500,000.00 USDT</div>", unsafe_allow_html=True)
+            av_u = st.session_state.balance - st.session_state.invested
+            st.markdown(f"<div style='color:#0ecb81;font-size:12px;font-weight:600;margin-bottom:4px;'>BUY BTC &nbsp;|&nbsp; Avbl: {av_u:,.2f} USDT</div>", unsafe_allow_html=True)
             bp  = st.number_input("Price (USDT)",   value=lp,  step=10.0, format="%.2f", key="bp", min_value=0.0)
             ba  = st.number_input("Amount (BTC)",   value=0.01, step=0.001, format="%.4f", key="ba", min_value=0.0)
             st.markdown(f"<div style='font-size:11px;color:#848e9c;margin-bottom:6px;'>Total ≈ ${bp*ba:,.2f} USDT</div>", unsafe_allow_html=True)
-            st.markdown("<button class='btn-buy'>▲ Buy / Long BTC</button>", unsafe_allow_html=True)
+            st.button("▲ Buy / Long BTC", key="b_btn", use_container_width=True, on_click=ex_buy)
+            
         with oc2:
-            st.markdown("<div style='color:#f6465d;font-size:12px;font-weight:600;margin-bottom:4px;'>SELL BTC &nbsp;|&nbsp; Avbl: 5.4300 BTC</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='color:#f6465d;font-size:12px;font-weight:600;margin-bottom:4px;'>SELL BTC &nbsp;|&nbsp; Avbl: {st.session_state.btc_bag:.4f} BTC</div>", unsafe_allow_html=True)
             sp2 = st.number_input("Price (USDT) ",  value=lp,  step=10.0, format="%.2f", key="sp2", min_value=0.0)
             sa  = st.number_input("Amount (BTC) ",  value=0.01, step=0.001, format="%.4f", key="sa", min_value=0.0)
             st.markdown(f"<div style='font-size:11px;color:#848e9c;margin-bottom:6px;'>Total ≈ ${sp2*sa:,.2f} USDT</div>", unsafe_allow_html=True)
-            st.markdown("<button class='btn-sell'>▼ Sell / Short BTC</button>", unsafe_allow_html=True)
+            st.button("▼ Sell / Short BTC", key="s_btn", use_container_width=True, on_click=ex_sell)
 
     # ── Market Trades & AI Reasnoning ──
     with col_tr:
