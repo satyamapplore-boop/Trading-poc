@@ -544,7 +544,7 @@ with tab_terminal:
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar":False})
         render_chart()
 
-        @st.fragment(run_every=3)
+        @st.fragment
         def render_form():
             a = st.session_state.active_asset
             sym = a + "USDT"
