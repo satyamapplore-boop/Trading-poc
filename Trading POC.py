@@ -197,7 +197,8 @@ def init():
     st.session_state.inited   = True
     st.session_state.balance  = 2_500_000.0
     st.session_state.invested = 1_850_000.0
-    st.session_state.btc_bag  = 5.4300
+    st.session_state.holdings = {"BTC": 5.43, "ETH": 42.5, "BNB": 150.0, "XRP": 45000.0, "SOL": 350.0}
+    st.session_state.active_asset = "BTC"
     st.session_state.prev_btc = None
     st.session_state.wallet_history = [
         {"Date": (datetime.now()-timedelta(days=30)).strftime("%Y-%m-%d"), "Type":"Deposit","Amount":"$2,000,000","Status":"Completed"},
@@ -414,37 +415,48 @@ with tab_portfolio:
 # TAB 2 — Trading Terminal (LIVE BINANCE)
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab_terminal:
+    st.markdown("""
+        <style>
+        div[data-testid="stRadio"] > div {background: #161a1e; padding: 6px 16px; border-radius: 8px; border: 1px solid #2b3139;}
+        </style>
+    """, unsafe_allow_html=True)
+    st.session_state.active_asset = st.radio(
+        "⚡ Select Trade Asset:", ["BTC", "ETH", "BNB", "XRP", "SOL"],
+        horizontal=True, index=["BTC", "ETH", "BNB", "XRP", "SOL"].index(st.session_state.get("active_asset", "BTC"))
+    )
+    
     @st.fragment(run_every=2)
     def render_ticker_strip():
-        ticker = api_ticker("BTCUSDT")
+        sym = st.session_state.active_asset + "USDT"
+        ticker = api_ticker(sym)
         if not ticker: return
         lp = float(ticker.get("lastPrice", 0))
         pc = float(ticker.get("priceChangePercent", 0))
         pc_col = "#0ecb81" if pc >= 0 else "#f6465d"
         pc_arr = "▲" if pc >= 0 else "▼"
         pc_sign = "+" if pc >= 0 else ""
-        prev = st.session_state.get("prev_btc_term", lp)
+        prev = st.session_state.get("prev_term_"+sym, lp)
         flash = ("flash-up" if lp > prev else "flash-down") if prev and prev != lp else ""
-        st.session_state.prev_btc_term = lp
+        st.session_state["prev_term_"+sym] = lp
         st.markdown(f"""
         <div class='ticker-strip'>
             <div style='margin-right:24px;'>
-                <div style='font-size:1rem;font-weight:800;color:#fff;'>BTC<span style='color:#848e9c;'>/USDT</span></div>
+                <div style='font-size:1rem;font-weight:800;color:#fff;'>{st.session_state.active_asset}<span style='color:#848e9c;'>/USDT</span></div>
                 <div style='font-size:.7rem;color:#f7931a;'>Binance Spot · Live</div>
             </div>
             <div class='sbox'>
-                <span class='{flash}' style='color:{pc_col};font-size:1.7rem;font-weight:900;letter-spacing:-.02em;'>${lp:,.2f}</span>
-                <span class='slbl'>≈ ${lp:,.2f} USD</span>
+                <span class='{flash}' style='color:{pc_col};font-size:1.7rem;font-weight:900;letter-spacing:-.02em;'>${lp:,.4f}</span>
+                <span class='slbl'>≈ ${lp:,.4f} USD</span>
             </div>
             <span class='tick-sep'>|</span>
             <div class='sbox'><span class='slbl'>24h Change</span>
                 <span style='color:{pc_col};font-weight:700;'>{pc_arr} {pc_sign}{pc:.2f}%</span></div>
             <span class='tick-sep'>|</span>
-            <div class='sbox'><span class='slbl'>24h High</span><span class='sval'>${float(ticker.get('highPrice',0)):,.2f}</span></div>
+            <div class='sbox'><span class='slbl'>24h High</span><span class='sval'>${float(ticker.get('highPrice',0)):,.4f}</span></div>
             <span class='tick-sep'>|</span>
-            <div class='sbox'><span class='slbl'>24h Low</span><span class='sval'>${float(ticker.get('lowPrice',0)):,.2f}</span></div>
+            <div class='sbox'><span class='slbl'>24h Low</span><span class='sval'>${float(ticker.get('lowPrice',0)):,.4f}</span></div>
             <span class='tick-sep'>|</span>
-            <div class='sbox'><span class='slbl'>24h Vol (USDT)</span><span class='sval'>${float(ticker.get('quoteVolume',0))/1e9:.2f}B</span></div>
+            <div class='sbox'><span class='slbl'>24h Vol (USDT)</span><span class='sval'>${float(ticker.get('quoteVolume',0))/1e6:.2f}M</span></div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -454,8 +466,9 @@ with tab_terminal:
     with col_ob:
         @st.fragment(run_every=2)
         def render_ob():
-            ticker = api_ticker("BTCUSDT")
-            depth = api_depth("BTCUSDT", 14)
+            sym = st.session_state.active_asset + "USDT"
+            ticker = api_ticker(sym)
+            depth = api_depth(sym, 14)
             if not ticker or not depth: return
             lp = float(ticker.get("lastPrice", 0))
             pc_col = "#0ecb81" if float(ticker.get("priceChangePercent", 0)) >= 0 else "#f6465d"
@@ -468,26 +481,27 @@ with tab_terminal:
             cum = 0.0
             for p,q in reversed(asks_raw):
                 cum += float(q)
-                ask_html += f"<div class='ob-row' style='position:relative;'><div class='ob-bar ob-ask-bar' style='width:{float(q)/max_sz*100:.1f}%;'></div><span class='ob-price-ask'>{float(p):,.2f}</span><span class='ob-qty'>{float(q):.4f}</span><span class='ob-total'>{cum:.3f}</span></div>"
+                ask_html += f"<div class='ob-row' style='position:relative;'><div class='ob-bar ob-ask-bar' style='width:{float(q)/max_sz*100:.1f}%;'></div><span class='ob-price-ask'>{float(p):,.4f}</span><span class='ob-qty'>{float(q):.4f}</span><span class='ob-total'>{cum:.3f}</span></div>"
 
             sp = float(asks_raw[0][0])-float(bids_raw[0][0]) if asks_raw and bids_raw else 0
-            mid = f"<div style='display:flex;justify-content:space-between;align-items:center;margin:4px 0;background:#1f2933;border-radius:4px;padding:3px 8px;'><span style='color:#848e9c;font-size:10px;'>Spread</span><span style='color:{pc_col};font-size:14px;font-weight:900;'>${lp:,.2f}</span><span style='color:#848e9c;font-size:10px;'>{sp:.2f}</span></div>"
+            mid = f"<div style='display:flex;justify-content:space-between;align-items:center;margin:4px 0;background:#1f2933;border-radius:4px;padding:3px 8px;'><span style='color:#848e9c;font-size:10px;'>Spread</span><span style='color:{pc_col};font-size:14px;font-weight:900;'>${lp:,.4f}</span><span style='color:#848e9c;font-size:10px;'>{sp:.4f}</span></div>"
 
             bid_html = ""
             cum = 0.0
             for p,q in bids_raw:
                 cum += float(q)
-                bid_html += f"<div class='ob-row' style='position:relative;'><div class='ob-bar ob-bid-bar' style='width:{float(q)/max_sz*100:.1f}%;'></div><span class='ob-price-bid'>{float(p):,.2f}</span><span class='ob-qty'>{float(q):.4f}</span><span class='ob-total'>{cum:.3f}</span></div>"
+                bid_html += f"<div class='ob-row' style='position:relative;'><div class='ob-bar ob-bid-bar' style='width:{float(q)/max_sz*100:.1f}%;'></div><span class='ob-price-bid'>{float(p):,.4f}</span><span class='ob-qty'>{float(q):.4f}</span><span class='ob-total'>{cum:.3f}</span></div>"
 
-            st.markdown(f"<div style='font-family:monospace;'><div style='display:flex;justify-content:space-between;color:#5a6370;font-size:10px;margin-bottom:4px;padding:0 4px;'><span style='width:90px'>Price(USDT)</span><span style='width:72px;text-align:right'>Size(BTC)</span><span style='width:68px;text-align:right'>Total</span></div>{ask_html}{mid}{bid_html}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-family:monospace;'><div style='display:flex;justify-content:space-between;color:#5a6370;font-size:10px;margin-bottom:4px;padding:0 4px;'><span style='width:90px'>Price(USDT)</span><span style='width:72px;text-align:right'>Qty</span><span style='width:68px;text-align:right'>Total</span></div>{ask_html}{mid}{bid_html}</div>", unsafe_allow_html=True)
         render_ob()
 
     with col_chart:
         @st.fragment(run_every=60)
         def render_chart():
-            klines = api_klines("BTCUSDT", "5m", 80)
+            sym = st.session_state.active_asset + "USDT"
+            klines = api_klines(sym, "5m", 80)
             if not klines: return
-            st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>📊 BTC/USDT — 5m Live Candlestick</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='card-title' style='font-size:13px;margin-bottom:8px;'>📊 {st.session_state.active_asset}/USDT — 5m Live Candlestick</div>", unsafe_allow_html=True)
             df = pd.DataFrame(klines, columns=["ot","o","h","l","c","v","ct","qav","nt","tbbav","tbqav","ig"])
             df["ot"] = pd.to_datetime(df["ot"], unit="ms")
             for col in ["o","h","l","c","v"]: df[col] = df[col].astype(float)
@@ -501,7 +515,9 @@ with tab_terminal:
 
         @st.fragment(run_every=3)
         def render_form():
-            ticker = api_ticker("BTCUSDT")
+            a = st.session_state.active_asset
+            sym = a + "USDT"
+            ticker = api_ticker(sym)
             lp = float(ticker.get("lastPrice", 0)) if ticker else 0.0
             st.markdown("<div class='card-title' style='font-size:13px;margin-top:8px;margin-bottom:8px;'>⚡ Spot Trading (Simulated)</div>", unsafe_allow_html=True)
             oc1, oc2 = st.columns(2)
@@ -510,40 +526,41 @@ with tab_terminal:
                 cost = st.session_state.bp * st.session_state.ba
                 if (st.session_state.balance - st.session_state.invested) >= cost:
                     st.session_state.balance -= cost
-                    st.session_state.btc_bag += st.session_state.ba
-                    st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": "BTC", "Strategy": "Manual Trade", "Direction": "BUY", "P&L": 0.0})
-                    st.session_state.notifs.insert(0, f"✅ Executed Manual BUY of {st.session_state.ba:.4f} BTC at ${st.session_state.bp:,.2f}")
+                    st.session_state.holdings[a] += st.session_state.ba
+                    st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "BUY", "P&L": 0.0})
+                    st.session_state.notifs.insert(0, f"✅ Executed Manual BUY of {st.session_state.ba:.4f} {a} at ${st.session_state.bp:,.4f}")
                     
             def ex_sell():
                 rev = st.session_state.sp2 * st.session_state.sa
-                if st.session_state.btc_bag >= st.session_state.sa:
-                    st.session_state.btc_bag -= st.session_state.sa
+                if st.session_state.holdings[a] >= st.session_state.sa:
+                    st.session_state.holdings[a] -= st.session_state.sa
                     st.session_state.balance += rev
-                    st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": "BTC", "Strategy": "Manual Trade", "Direction": "SELL", "P&L": 0.0})
-                    st.session_state.notifs.insert(0, f"✅ Executed Manual SELL of {st.session_state.sa:.4f} BTC at ${st.session_state.sp2:,.2f}")
+                    st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "SELL", "P&L": 0.0})
+                    st.session_state.notifs.insert(0, f"✅ Executed Manual SELL of {st.session_state.sa:.4f} {a} at ${st.session_state.sp2:,.4f}")
 
             with oc1:
-                st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>BUY BTC &nbsp;|&nbsp; Avbl: {st.session_state.balance - st.session_state.invested:,.2f} USDT</div>", unsafe_allow_html=True)
-                st.number_input("Price (USDT)", value=lp, step=10.0, format="%.2f", key="bp", min_value=0.0)
-                st.number_input("Amount (BTC)", value=0.01, step=0.001, format="%.4f", key="ba", min_value=0.0)
-                st.button("▲ Buy / Long BTC", key="b_btn", use_container_width=True, on_click=ex_buy, type="primary")
+                st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>BUY {a} &nbsp;|&nbsp; Avbl: {st.session_state.balance - st.session_state.invested:,.2f} USDT</div>", unsafe_allow_html=True)
+                st.number_input("Price (USDT)", value=lp, step=0.1, format="%.4f", key="bp", min_value=0.0)
+                st.number_input(f"Amount ({a})", value=0.01 if a in ["BTC", "ETH"] else 1.0, step=0.001 if a in ["BTC", "ETH"] else 1.0, format="%.4f", key="ba", min_value=0.0)
+                st.button(f"▲ Buy / Long {a}", key="b_btn", use_container_width=True, on_click=ex_buy, type="primary")
             with oc2:
-                st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>SELL BTC &nbsp;|&nbsp; Avbl: {st.session_state.btc_bag:.4f} BTC</div>", unsafe_allow_html=True)
-                st.number_input("Price (USDT)", value=lp, step=10.0, format="%.2f", key="sp2", min_value=0.0)
-                st.number_input("Amount (BTC)", value=0.01, step=0.001, format="%.4f", key="sa", min_value=0.0)
-                st.button("▼ Sell / Short BTC", key="s_btn", use_container_width=True, on_click=ex_sell, type="primary")
+                st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>SELL {a} &nbsp;|&nbsp; Avbl: {st.session_state.holdings.get(a, 0.0):.4f} {a}</div>", unsafe_allow_html=True)
+                st.number_input("Price (USDT)", value=lp, step=0.1, format="%.4f", key="sp2", min_value=0.0)
+                st.number_input(f"Amount ({a})", value=0.01 if a in ["BTC", "ETH"] else 1.0, step=0.001 if a in ["BTC", "ETH"] else 1.0, format="%.4f", key="sa", min_value=0.0)
+                st.button(f"▼ Sell / Short {a}", key="s_btn", use_container_width=True, on_click=ex_sell, type="primary")
         render_form()
 
     with col_tr:
         @st.fragment(run_every=2)
         def render_trades_and_ai():
-            trades = api_trades("BTCUSDT", 20)
+            sym = st.session_state.active_asset + "USDT"
+            trades = api_trades(sym, 20)
             if not trades: return
             st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>⚡ Live Market Trades</div>", unsafe_allow_html=True)
             tr_rows = ""
             for t in trades:
                 tcl = "#f6465d" if t.get("isBuyerMaker") else "#0ecb81"
-                tr_rows += f"<div class='trade-row'><span style='color:{tcl};'>{float(t['price']):,.2f}</span><span style='color:#848e9c;'>{float(t['qty']):.4f}</span><span style='color:#5a6370;'>{pd.to_datetime(t['time'], unit='ms').strftime('%H:%M:%S')}</span></div>"
+                tr_rows += f"<div class='trade-row'><span style='color:{tcl};'>{float(t['price']):,.4f}</span><span style='color:#848e9c;'>{float(t['qty']):.4f}</span><span style='color:#5a6370;'>{pd.to_datetime(t['time'], unit='ms').strftime('%H:%M:%S')}</span></div>"
             st.markdown(f"<div style='font-family:monospace;'><div style='display:flex;justify-content:space-between;color:#5a6370;font-size:10px;margin-bottom:4px;'><span>Price(USDT)</span><span>Qty</span><span>Time</span></div>{tr_rows}</div>", unsafe_allow_html=True)
         render_trades_and_ai()
 
