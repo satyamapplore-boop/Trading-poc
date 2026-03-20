@@ -577,45 +577,62 @@ with tab_terminal:
                 st.session_state.sp2 = best_bid
                 st.session_state.auto_sp2 = best_bid
 
+            def exec_buy():
+                price = st.session_state.get("bp", best_ask)
+                qty = st.session_state.get("ba", 0.01 if a in ["BTC", "ETH"] else 1.0)
+                cost = price * qty
+                if (st.session_state.balance - st.session_state.invested) >= cost:
+                    st.session_state.balance -= cost
+                    old_qty = st.session_state.holdings[a]
+                    new_qty = old_qty + qty
+                    if new_qty > 0:
+                        st.session_state.avg_entry[a] = ((old_qty * st.session_state.avg_entry[a]) + cost) / new_qty
+                    st.session_state.holdings[a] += qty
+                    st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "BUY", "P&L": 0.0, "Price": price, "Qty": qty})
+                    st.session_state.notifs.insert(0, f"✅ Executed Manual BUY of {qty:.4f} {a} at ${price:,.4f}")
+                    # Re-sync to live price tracker
+                    st.session_state.bp = best_ask
+                    st.session_state.auto_bp = best_ask
+
+            def exec_sell():
+                price = st.session_state.get("sp2", best_bid)
+                qty = st.session_state.get("sa", 0.01 if a in ["BTC", "ETH"] else 1.0)
+                rev = price * qty
+                if st.session_state.holdings[a] >= qty:
+                    pnl = (price - st.session_state.avg_entry[a]) * qty
+                    st.session_state.holdings[a] -= qty
+                    st.session_state.balance += rev
+                    st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "SELL", "P&L": pnl, "Price": price, "Qty": qty})
+                    st.session_state.notifs.insert(0, f"✅ Executed Manual SELL of {qty:.4f} {a} at ${price:,.4f}")
+                    # Re-sync to live price tracker
+                    st.session_state.sp2 = best_bid
+                    st.session_state.auto_sp2 = best_bid
+
             st.markdown("<div class='card-title' style='font-size:13px;margin-top:8px;margin-bottom:8px;'>⚡ Spot Trading (Simulated)</div>", unsafe_allow_html=True)
             oc1, oc2 = st.columns(2)
             
             with oc1:
                 st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>BUY {a} &nbsp;|&nbsp; Avbl: {st.session_state.balance - st.session_state.invested:,.2f} USDT</div>", unsafe_allow_html=True)
-                bp = st.number_input("Price (USDT)", step=0.1, format="%.4f", key="bp", min_value=0.0)
-                ba = st.number_input(f"Amount ({a})", value=0.01 if a in ["BTC", "ETH"] else 1.0, step=0.001 if a in ["BTC", "ETH"] else 1.0, format="%.4f", key="ba", min_value=0.0)
-                if st.button(f"▲ Buy / Long {a}", key="b_btn", use_container_width=True, type="primary"):
-                    cost = bp * ba
-                    if (st.session_state.balance - st.session_state.invested) >= cost:
-                        st.session_state.balance -= cost
-                        old_qty = st.session_state.holdings[a]
-                        new_qty = old_qty + ba
-                        if new_qty > 0:
-                            st.session_state.avg_entry[a] = ((old_qty * st.session_state.avg_entry[a]) + cost) / new_qty
-                        st.session_state.holdings[a] += ba
-                        st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "BUY", "P&L": 0.0, "Price": bp, "Qty": ba})
-                        st.session_state.notifs.insert(0, f"✅ Executed Manual BUY of {ba:.4f} {a} at ${bp:,.4f}")
-                        
-                        st.session_state.bp = best_ask
-                        st.session_state.auto_bp = best_ask
-                        st.rerun()
+                st.number_input("Price (USDT)", step=0.1, format="%.4f", key="bp", min_value=0.0)
+                st.number_input(f"Amount ({a})", value=0.01 if a in ["BTC", "ETH"] else 1.0, step=0.001 if a in ["BTC", "ETH"] else 1.0, format="%.4f", key="ba", min_value=0.0)
+                st.button(f"▲ Buy / Long {a}", key="b_btn", use_container_width=True, type="primary", on_click=exec_buy)
 
             with oc2:
-                st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>SELL {a} &nbsp;|&nbsp; Avbl: {st.session_state.holdings.get(a, 0.0):.4f} {a}</div>", unsafe_allow_html=True)
-                sp2 = st.number_input("Price (USDT)", step=0.1, format="%.4f", key="sp2", min_value=0.0)
-                sa = st.number_input(f"Amount ({a})", value=0.01 if a in ["BTC", "ETH"] else 1.0, step=0.001 if a in ["BTC", "ETH"] else 1.0, format="%.4f", key="sa", min_value=0.0)
-                if st.button(f"▼ Sell / Short {a}", key="s_btn", use_container_width=True, type="primary"):
-                    rev = sp2 * sa
-                    if st.session_state.holdings[a] >= sa:
-                        pnl = (sp2 - st.session_state.avg_entry[a]) * sa
-                        st.session_state.holdings[a] -= sa
-                        st.session_state.balance += rev
-                        st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "SELL", "P&L": pnl, "Price": sp2, "Qty": sa})
-                        st.session_state.notifs.insert(0, f"✅ Executed Manual SELL of {sa:.4f} {a} at ${sp2:,.4f}")
-                        
-                        st.session_state.sp2 = best_bid
-                        st.session_state.auto_sp2 = best_bid
-                        st.rerun()
+                hld = st.session_state.holdings.get(a, 0.0)
+                current_p = st.session_state.get("sp2", best_bid)
+                current_q = st.session_state.get("sa", 0.01 if a in ["BTC", "ETH"] else 1.0)
+                unr_pnl = 0.0
+                if hld > 0:
+                    unr_pnl = (current_p - st.session_state.avg_entry[a]) * current_q
+                
+                pnl_color = "#0ecb81" if unr_pnl > 0 else ("#f6465d" if unr_pnl < 0 else "#848e9c")
+                pnl_str = f" <span style='color:#848e9c;font-weight:500'>| Avg: ${st.session_state.avg_entry[a]:,.1f} | Unr. PnL: <span style='color:{pnl_color}'>${unr_pnl:+,.1f}</span></span>" if hld > 0 else ""
+                
+                st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;white-space:nowrap;'>SELL {a} &nbsp;|&nbsp; Avbl: {hld:.4f} {a}{pnl_str}</div>", unsafe_allow_html=True)
+                
+                st.number_input("Price (USDT)", step=0.1, format="%.4f", key="sp2", min_value=0.0)
+                st.number_input(f"Amount ({a})", value=0.01 if a in ["BTC", "ETH"] else 1.0, step=0.001 if a in ["BTC", "ETH"] else 1.0, format="%.4f", key="sa", min_value=0.0)
+                st.button(f"▼ Sell / Short {a}", key="s_btn", use_container_width=True, type="primary", on_click=exec_sell)
                         
         render_form()
         # Form fragment complete
