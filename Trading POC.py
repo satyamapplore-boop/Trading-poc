@@ -51,94 +51,126 @@ html, body, .stApp, [data-testid="stAppViewContainer"], .main {
 
 div.stMarkdown p, div.stMetric { color: #e0e0e0 !important; }
 div[data-testid="stHorizontalBlock"] { background-color: transparent !important; }
-[data-testid="stMetricValue"] { font-size: 1.7rem; font-weight: 700; color: #fff !important; }
-[data-testid="stMetricDelta"]  { font-size: 0.9rem; font-weight: 600; }
-[data-testid="stMetricLabel"]  { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: #8b929a !important; }
+[data-testid="stMetricValue"] { font-size: 1.8rem; font-weight: 700; color: #fff !important; letter-spacing: -0.02em; }
+[data-testid="stMetricDelta"] { font-size: 0.9rem; font-weight: 600; }
+[data-testid="stMetricLabel"] { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #848e9c !important; font-weight: 500;}
 
-.card { background:#161a1e; border:1px solid #2b3139; border-radius:8px; padding:20px; margin-bottom:16px; box-shadow:0 4px 12px rgba(0,0,0,.4); }
-.card-title { font-size:1.05rem; font-weight:600; color:#fff; margin-bottom:14px; border-bottom:1px solid #2b3139; padding-bottom:8px; }
+/* Cards */
+.card { background:#1c2027; border:1px solid #2b3139; border-radius:12px; padding:24px; margin-bottom:20px; box-shadow:0 4px 16px rgba(0,0,0,.2); }
+.card-title { font-size:1.1rem; font-weight:600; color:#fff; margin-bottom:16px; border-bottom:1px solid #2b3139; padding-bottom:10px; }
 
 .color-up   { color:#0ecb81 !important; }
 .color-down { color:#f6465d !important; }
-.badge-strategy { background:#2b3139; color:#e0e0e0; padding:4px 10px; border-radius:4px; font-size:.8rem; font-weight:600; }
-hr { border-color:#2b3139 !important; }
+.badge-strategy { background:#2b3139; color:#e0e0e0; padding:4px 10px; border-radius:6px; font-size:.8rem; font-weight:600; border: 1px solid #363c45; }
+hr { border-color:#2b3139 !important; margin: 24px 0 !important; }
 h1,h2,h3,h4,strong,b { color:#fff !important; font-weight:600 !important; }
-.stDataFrame { border:1px solid #2b3139; border-radius:6px; }
+.stDataFrame { border:1px solid #2b3139; border-radius:8px; overflow: hidden; }
 
 /* ── Tabs ── */
 div[data-testid="stTabs"] > div:first-child {
-    background: #161a1e;
+    background: #1c2027;
     border: 1px solid #2b3139;
-    border-radius: 10px;
-    padding: 4px;
-    gap: 4px;
+    border-radius: 12px;
+    padding: 6px;
+    gap: 6px;
 }
 button[data-baseweb="tab"] {
     background: transparent !important;
-    border-radius: 7px !important;
+    border-radius: 8px !important;
     color: #848e9c !important;
-    font-size: 0.82rem !important;
+    font-size: 0.85rem !important;
     font-weight: 600 !important;
-    padding: 9px 16px !important;
-    transition: all 0.2s !important;
+    padding: 10px 18px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     border-bottom: none !important;
 }
 button[data-baseweb="tab"]:hover {
-    background: #1f2933 !important;
+    background: rgba(255,255,255,0.05) !important;
     color: #e0e0e0 !important;
 }
 button[data-baseweb="tab"][aria-selected="true"] {
-    background: #0ecb81 !important;
-    color: #0b0e11 !important;
-    box-shadow: 0 0 14px rgba(14,203,129,0.4) !important;
+    background: #1f2933 !important;
+    color: #0ecb81 !important;
+    font-weight: 700 !important;
 }
-div[data-testid="stTabContent"] { padding-top: 16px !important; }
+div[data-testid="stTabContent"] { padding-top: 20px !important; }
 div[role="tablist"] > div[data-baseweb="tab-highlight"] { display:none !important; }
 div[role="tablist"] > div[data-baseweb="tab-border"]    { display:none !important; }
 
 /* ── Order book ── */
-.ob-row { display:flex; align-items:center; padding:2px 4px; position:relative; }
-.ob-bar  { position:absolute; right:0; top:0; bottom:0; opacity:.18; border-radius:2px; }
+.ob-row { display:flex; align-items:center; padding:4px 8px; position:relative; cursor:pointer; transition:background 0.15s ease; border-radius:4px; margin-bottom:2px; }
+.ob-row:hover { background: rgba(255,255,255,0.04); }
+.ob-bar  { position:absolute; right:0; top:0; bottom:0; opacity:.15; border-radius:3px; }
 .ob-ask-bar { background:#f6465d; }
 .ob-bid-bar { background:#0ecb81; }
-.ob-price-ask { color:#f6465d; font-weight:500; font-size:12px; width:90px; z-index:1; }
-.ob-price-bid { color:#0ecb81; font-weight:500; font-size:12px; width:90px; z-index:1; }
-.ob-qty   { color:#848e9c; font-size:12px; width:72px; text-align:right; z-index:1; }
-.ob-total { color:#5a6370; font-size:11px; width:68px; text-align:right; z-index:1; }
-
-/* ── Price Flash ── */
-@keyframes flash-up   { 0%{background:rgba(14,203,129,.4)} 100%{background:transparent} }
-@keyframes flash-down { 0%{background:rgba(246,70, 93,.4)} 100%{background:transparent} }
-.flash-up   { animation:flash-up   0.9s ease-out; border-radius:4px; padding:2px 6px; display:inline-block; }
-.flash-down { animation:flash-down 0.9s ease-out; border-radius:4px; padding:2px 6px; display:inline-block; }
+.ob-price-ask { color:#f6465d; font-weight:600; font-size:12px; width:90px; z-index:1; font-family: monospace; }
+.ob-price-bid { color:#0ecb81; font-weight:600; font-size:12px; width:90px; z-index:1; font-family: monospace; }
+.ob-qty   { color:#e0e0e0; font-size:12px; width:72px; text-align:right; z-index:1; font-family: monospace; }
+.ob-total { color:#848e9c; font-size:11px; width:68px; text-align:right; z-index:1; font-family: monospace; }
 
 /* ── Trade row ── */
-.trade-row { display:flex; justify-content:space-between; padding:2px 0; font-size:12px; font-family:monospace; }
+.trade-row { display:flex; justify-content:space-between; padding:3px 6px; font-size:12px; font-family:monospace; border-radius:4px; transition:background 0.15s;}
+.trade-row:hover { background: rgba(255,255,255,0.04); cursor: pointer; }
 
 /* Ticker bar */
-.ticker-strip { background:#161a1e; border:1px solid #2b3139; border-radius:6px; padding:12px 20px;
-               display:flex; flex-wrap:wrap; align-items:center; gap:0; margin-bottom:10px; }
-.tick-sep { color:#2b3139; margin:0 14px; }
+.ticker-strip { background:#1c2027; border:1px solid #2b3139; border-radius:10px; padding:12px 24px;
+               display:flex; flex-wrap:wrap; align-items:center; gap:0; margin-bottom:16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.tick-sep { color:#2b3139; margin:0 16px; font-weight:100; }
 .sbox { display:flex; flex-direction:column; }
-.slbl { font-size:.7rem; color:#848e9c; }
-.sval { font-size:.88rem; color:#e0e0e0; font-weight:bold; }
+.slbl { font-size:.7rem; color:#848e9c; font-weight:500; text-transform:uppercase; letter-spacing:0.02em; }
+.sval { font-size:.9rem; color:#fff; font-weight:700; }
 
-/* Buttons */
-.btn-buy  { background:#0ecb81; color:#0b0e11; width:100%; padding:11px; border:none; border-radius:4px; font-weight:700; cursor:pointer; font-size:14px; }
-.btn-sell { background:#f6465d; color:#fff;    width:100%; padding:11px; border:none; border-radius:4px; font-weight:700; cursor:pointer; font-size:14px; }
-
-/* ── Streamlit Primary Button Override (Orange Theme) ── */
-button[kind="primary"] {
-    background-color: #f7931a !important;
-    border-color: #f7931a !important;
-    color: #161a1e !important;
-    font-weight: 800 !important;
-    border-radius: 6px !important;
+/* ── Streamlit Chart Box ── */
+.stPlotlyChart {
+    border: 1px solid #2b3139;
+    border-radius: 12px;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);
+    background: #1c2027;
+    padding: 8px;
 }
-button[kind="primary"]:hover {
-    background-color: #e88612 !important;
-    border-color: #e88612 !important;
+
+/* ── Form Inputs ── */
+div[data-baseweb="input"], div[data-baseweb="select"] {
+    background-color: #161a1e !important;
+    border: 1px solid #2b3139 !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+}
+div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within {
+    border-color: #f7931a !important;
+    box-shadow: 0 0 0 1px #f7931a !important;
+}
+div[data-baseweb="input"] input {
     color: #fff !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+}
+
+/* ── Streamlit Primary Button Override (Smart Targeting) ── */
+button[kind="primary"] {
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    padding: 16px 20px !important;
+    color: #fff !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 13px !important;
+    border: none !important;
+}
+button[kind="primary"]:has(p:contains("Buy")) {
+    background: linear-gradient(135deg, #0ecb81 0%, #0ba368 100%) !important;
+}
+button[kind="primary"]:has(p:contains("Buy")):hover {
+    box-shadow: 0 4px 14px rgba(14,203,129,0.3) !important;
+    transform: translateY(-1px);
+}
+button[kind="primary"]:has(p:contains("Sell")) {
+    background: linear-gradient(135deg, #f6465d 0%, #c4384a 100%) !important;
+}
+button[kind="primary"]:has(p:contains("Sell")):hover {
+    box-shadow: 0 4px 14px rgba(246,70,93,0.3) !important;
+    transform: translateY(-1px);
 }
 
 /* Eliminate Streamlit fragment update pulsing (Opacity flicker) */
@@ -149,8 +181,9 @@ button[kind="primary"]:hover {
 
 /* Fix input label visibility (e.g. Price, Amount forms) */
 [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] div {
-    color: #ffffff !important;
+    color: #848e9c !important;
     font-weight: 500 !important;
+    font-size: 12px !important;
 }
 </style>
 """, unsafe_allow_html=True)
