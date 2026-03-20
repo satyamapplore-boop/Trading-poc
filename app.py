@@ -522,41 +522,103 @@ with tab_terminal:
             st.markdown("<div class='card-title' style='font-size:13px;margin-top:8px;margin-bottom:8px;'>⚡ Spot Trading (Simulated)</div>", unsafe_allow_html=True)
             oc1, oc2 = st.columns(2)
             
-            def ex_buy():
-                cost = st.session_state.bp * st.session_state.ba
-                if (st.session_state.balance - st.session_state.invested) >= cost:
-                    st.session_state.balance -= cost
-                    st.session_state.holdings[a] += st.session_state.ba
-                    st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "BUY", "P&L": 0.0})
-                    st.session_state.notifs.insert(0, f"✅ Executed Manual BUY of {st.session_state.ba:.4f} {a} at ${st.session_state.bp:,.4f}")
-                    
-            def ex_sell():
-                rev = st.session_state.sp2 * st.session_state.sa
-                if st.session_state.holdings[a] >= st.session_state.sa:
-                    st.session_state.holdings[a] -= st.session_state.sa
-                    st.session_state.balance += rev
-                    st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "SELL", "P&L": 0.0})
-                    st.session_state.notifs.insert(0, f"✅ Executed Manual SELL of {st.session_state.sa:.4f} {a} at ${st.session_state.sp2:,.4f}")
-
             with oc1:
                 st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>BUY {a} &nbsp;|&nbsp; Avbl: {st.session_state.balance - st.session_state.invested:,.2f} USDT</div>", unsafe_allow_html=True)
-                st.number_input("Price (USDT)", value=lp, step=0.1, format="%.4f", key="bp", min_value=0.0)
-                st.number_input(f"Amount ({a})", value=0.01 if a in ["BTC", "ETH"] else 1.0, step=0.001 if a in ["BTC", "ETH"] else 1.0, format="%.4f", key="ba", min_value=0.0)
-                st.button(f"▲ Buy / Long {a}", key="b_btn", use_container_width=True, on_click=ex_buy, type="primary")
+                bp = st.number_input("Price (USDT)", value=lp, step=0.1, format="%.4f", key="bp", min_value=0.0)
+                ba = st.number_input(f"Amount ({a})", value=0.01 if a in ["BTC", "ETH"] else 1.0, step=0.001 if a in ["BTC", "ETH"] else 1.0, format="%.4f", key="ba", min_value=0.0)
+                if st.button(f"▲ Buy / Long {a}", key="b_btn", use_container_width=True, type="primary"):
+                    cost = bp * ba
+                    if (st.session_state.balance - st.session_state.invested) >= cost:
+                        st.session_state.balance -= cost
+                        st.session_state.holdings[a] += ba
+                        st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "BUY", "P&L": 0.0})
+                        st.session_state.notifs.insert(0, f"✅ Executed Manual BUY of {ba:.4f} {a} at ${bp:,.4f}")
+                        st.rerun()
+
             with oc2:
                 st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>SELL {a} &nbsp;|&nbsp; Avbl: {st.session_state.holdings.get(a, 0.0):.4f} {a}</div>", unsafe_allow_html=True)
-                st.number_input("Price (USDT)", value=lp, step=0.1, format="%.4f", key="sp2", min_value=0.0)
-                st.number_input(f"Amount ({a})", value=0.01 if a in ["BTC", "ETH"] else 1.0, step=0.001 if a in ["BTC", "ETH"] else 1.0, format="%.4f", key="sa", min_value=0.0)
-                st.button(f"▼ Sell / Short {a}", key="s_btn", use_container_width=True, on_click=ex_sell, type="primary")
+                sp2 = st.number_input("Price (USDT)", value=lp, step=0.1, format="%.4f", key="sp2", min_value=0.0)
+                sa = st.number_input(f"Amount ({a})", value=0.01 if a in ["BTC", "ETH"] else 1.0, step=0.001 if a in ["BTC", "ETH"] else 1.0, format="%.4f", key="sa", min_value=0.0)
+                if st.button(f"▼ Sell / Short {a}", key="s_btn", use_container_width=True, type="primary"):
+                    rev = sp2 * sa
+                    if st.session_state.holdings[a] >= sa:
+                        st.session_state.holdings[a] -= sa
+                        st.session_state.balance += rev
+                        st.session_state.trade_hist.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Asset": a, "Strategy": "Manual Trade", "Direction": "SELL", "P&L": 0.0})
+                        st.session_state.notifs.insert(0, f"✅ Executed Manual SELL of {sa:.4f} {a} at ${sp2:,.4f}")
+                        st.rerun()
+                        
+            st.markdown("<div class='card-title' style='font-size:13px;margin-top:16px;margin-bottom:8px;'>📖 Your Local Execution Logs</div>", unsafe_allow_html=True)
+            local_hist = [t for t in st.session_state.trade_hist if t["Strategy"] == "Manual Trade"][:4]
+            if local_hist:
+                thtm = "".join([f"<div style='font-size:11px;color:#848e9c;padding:3px 0; border-bottom:1px solid #1f2933;'>"
+                                f"<span class='{'color-up' if t['Direction']=='BUY' else 'color-down'}' style='font-weight:700'>{t['Direction']}</span> "
+                                f"{t['Asset']} • {t['Time']}</div>" for t in local_hist])
+                st.markdown(thtm, unsafe_allow_html=True)
+            else:
+                st.markdown("<div style='font-size:11px;color:#5a6370;'>No manual trades placed yet...</div>", unsafe_allow_html=True)
         render_form()
 
+    with col_tr:
     with col_tr:
         @st.fragment(run_every=2)
         def render_trades_and_ai():
             sym = st.session_state.active_asset + "USDT"
+            
+            # --- AI Signal Engine Logic ---
+            depth = api_depth(sym, 14)
+            klines = api_klines(sym, "5m", 80)
+            signal, sig_color, conf, reasons = "NEUTRAL", "#848e9c", 50, []
+            
+            if klines and len(klines) > 20 and depth:
+                closes = [float(k[4]) for k in klines]
+                ema9 = pd.Series(closes).ewm(span=9, adjust=False).mean().iloc[-1]
+                ema21 = pd.Series(closes).ewm(span=21, adjust=False).mean().iloc[-1]
+                deltas = np.diff(closes[-15:])
+                gains = deltas[deltas > 0].sum()
+                losses = -deltas[deltas < 0].sum()
+                rs = 0 if losses == 0 else gains/losses
+                rsi = 100 - (100 / (1 + rs))
+
+                asks_raw, bids_raw = depth.get("asks", []), depth.get("bids", [])
+                bid_vol = sum(float(q) for _,q in bids_raw)
+                ask_vol = sum(float(q) for _,q in asks_raw)
+                tot_vol = bid_vol + ask_vol or 1
+                bid_pct = bid_vol / tot_vol
+                
+                scores = 0
+                if ema9 > ema21: scores += 30; reasons.append("EMA 9/21 Bullish Cross")
+                else: scores -= 30; reasons.append("EMA 9/21 Bearish Cross")
+
+                if rsi < 30: scores += 40; reasons.append(f"RSI Oversold ({rsi:.1f})")
+                elif rsi > 70: scores -= 40; reasons.append(f"RSI Overbought ({rsi:.1f})")
+                else: reasons.append(f"RSI Neutral ({rsi:.1f})")
+
+                if bid_pct > 0.6: scores += 30; reasons.append("Heavy Buy Wall")
+                elif bid_pct < 0.4: scores -= 30; reasons.append("Heavy Sell Wall")
+
+                conf = min(100, max(0, 50 + scores))
+                if conf >= 65: signal, sig_color = "STRONG BUY", "#0ecb81"
+                elif conf <= 35: signal, sig_color = "STRONG SELL", "#f6465d"
+                elif conf >= 55: signal, sig_color = "BUY", "#0ecb81"
+                elif conf <= 45: signal, sig_color = "SELL", "#f6465d"
+
+            st.markdown(f"""
+            <div style='background:#1f2933; border:1px solid #2b3139; border-radius:6px; padding:6px 12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;'>
+                <span style='color:#848e9c; font-size:11px; font-weight:600;'>AI NUDGE:</span>
+                <span style='color:{sig_color}; font-weight:900; font-size:14px; letter-spacing:1px;'>{signal}</span>
+                <span style='color:#fff; font-size:12px; font-weight:700;'>{conf}% Conf</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>🧠 AI Engine Reasoning</div>", unsafe_allow_html=True)
+            reason_html = "".join([f"<div style='font-size:11px; color:#e0e0e0; margin-bottom:4px; padding-left:8px; border-left:2px solid {sig_color};'>{r}</div>" for r in reasons])
+            st.markdown(f"<div style='background:#161a1e; border:1px solid #2b3139; border-radius:6px; padding:10px; margin-bottom:20px;'>{reason_html}</div>", unsafe_allow_html=True)
+
+
             trades = api_trades(sym, 20)
             if not trades: return
-            st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>⚡ Live Market Trades</div>", unsafe_allow_html=True)
+            st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>⚡ Live Binance Chain Stream</div>", unsafe_allow_html=True)
             tr_rows = ""
             for t in trades:
                 tcl = "#f6465d" if t.get("isBuyerMaker") else "#0ecb81"
