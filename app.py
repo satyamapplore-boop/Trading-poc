@@ -197,7 +197,8 @@ def init():
     st.session_state.inited   = True
     st.session_state.balance  = 2_500_000.0
     st.session_state.invested = 1_850_000.0
-    st.session_state.holdings = {"BTC": 5.43, "ETH": 42.5, "BNB": 150.0, "XRP": 45000.0, "SOL": 350.0}
+    # Start manual holdings at 0 so test trades have a clean cost-basis (Avg Entry = Live Price)
+    st.session_state.holdings = {"BTC": 0.0, "ETH": 0.0, "BNB": 0.0, "XRP": 0.0, "SOL": 0.0}
     st.session_state.active_asset = "BTC"
     st.session_state.prev_btc = None
     st.session_state.wallet_history = [
@@ -205,7 +206,7 @@ def init():
         {"Date": (datetime.now()-timedelta(days=15)).strftime("%Y-%m-%d"), "Type":"Deposit","Amount":"$500,000",  "Status":"Completed"},
     ]
     st.session_state.prices = {"BTC":69000,"ETH":3500,"BNB":590,"SOL":145,"XRP":0.62}
-    st.session_state.avg_entry = {k: v for k, v in st.session_state.prices.items()}
+    st.session_state.avg_entry = {"BTC": 0.0, "ETH": 0.0, "BNB": 0.0, "XRP": 0.0, "SOL": 0.0}
     strats = ["Trend Following","Mean Reversion","Momentum Trading","Cross-Exchange Arbitrage","DCA"]
     st.session_state.positions = []
     for i, a in enumerate(["BTC","ETH","SOL","BNB"]):
