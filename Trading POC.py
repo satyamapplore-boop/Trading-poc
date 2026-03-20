@@ -557,9 +557,8 @@ with tab_terminal:
                 st.markdown(thtm, unsafe_allow_html=True)
             else:
                 st.markdown("<div style='font-size:11px;color:#5a6370;'>No manual trades placed yet...</div>", unsafe_allow_html=True)
-        render_form()
+        # Form fragment complete
 
-    with col_tr:
     with col_tr:
         @st.fragment(run_every=2)
         def render_trades_and_ai():
