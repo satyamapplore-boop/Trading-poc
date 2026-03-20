@@ -133,28 +133,28 @@ div[role="tablist"] > div[data-baseweb="tab-border"]    { display:none !importan
 # ─────────────────────────────────────────────────────────────────────────────
 BASE = "https://api.binance.com/api/v3"
 
-@st.cache_data(ttl=2)
+@st.cache_data(ttl=2, show_spinner=False)
 def api_ticker(sym="BTCUSDT"):
     try:
         return requests.get(f"{BASE}/ticker/24hr?symbol={sym}", timeout=4).json()
     except Exception:
         return None
 
-@st.cache_data(ttl=1)
+@st.cache_data(ttl=1, show_spinner=False)
 def api_depth(sym="BTCUSDT", lim=16):
     try:
         return requests.get(f"{BASE}/depth?symbol={sym}&limit={lim}", timeout=4).json()
     except Exception:
         return {}
 
-@st.cache_data(ttl=2)
+@st.cache_data(ttl=2, show_spinner=False)
 def api_trades(sym="BTCUSDT", lim=22):
     try:
         return requests.get(f"{BASE}/trades?symbol={sym}&limit={lim}", timeout=4).json()
     except Exception:
         return []
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=30, show_spinner=False)
 def api_klines(sym="BTCUSDT", interval="5m", lim=80):
     try:
         return requests.get(f"{BASE}/klines?symbol={sym}&interval={interval}&limit={lim}", timeout=5).json()
