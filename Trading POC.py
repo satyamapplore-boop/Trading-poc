@@ -129,22 +129,7 @@ div[role="tablist"] > div[data-baseweb="tab-border"]    { display:none !importan
     padding: 8px;
 }
 
-/* ── Form Inputs ── */
-div[data-baseweb="input"], div[data-baseweb="select"] {
-    background-color: #161a1e !important;
-    border: 1px solid #2b3139 !important;
-    border-radius: 8px !important;
-    transition: all 0.2s ease !important;
-}
-div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within {
-    border-color: #f7931a !important;
-    box-shadow: 0 0 0 1px #f7931a !important;
-}
-div[data-baseweb="input"] input {
-    color: #fff !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-}
+
 
 /* ── Streamlit Primary Button Override (Smart Targeting) ── */
 button[kind="primary"] {
