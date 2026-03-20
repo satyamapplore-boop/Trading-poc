@@ -252,48 +252,44 @@ tick()
 st.session_state.notifs = st.session_state.notifs[:5]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# AUTO-REFRESH  — placed FIRST so it registers before any widgets
+# Removed st_autorefresh to prevent full-page flicker, using st.fragment instead.
 # ─────────────────────────────────────────────────────────────────────────────
-st_autorefresh(interval=3000, key="autorefresh")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# HEADER
-# ─────────────────────────────────────────────────────────────────────────────
-hc1, hc2, hc3 = st.columns([3, 4, 2])
-
-with hc1:
-    logo_img = (f"<img src='data:image/png;base64,{LOGO}' "
-                f"style='height:48px;width:auto;object-fit:contain;' alt='Applore'>") if LOGO else "🚀"
-    st.markdown(f"""
-    <div style='display:flex;align-items:center;gap:12px;padding:6px 0;'>
-        {logo_img}
-        <div>
-            <div style='font-size:1.1rem;font-weight:800;color:#fff;letter-spacing:-.01em;line-height:1.2;'>Applore Technologies</div>
-            <div style='font-size:.82rem;font-weight:600;color:#a0a8b0;line-height:1.3;'>Trading POC</div>
-            <div style='color:#0ecb81;font-size:11px;font-weight:700;margin-top:2px;letter-spacing:.08em;'>● LIVE CONNECTION SECURED</div>
-        </div>
-    </div>""", unsafe_allow_html=True)
-
-with hc2:
-    tk = api_ticker()
-    if tk:
-        hp  = float(tk.get("lastPrice", 0))
-        hpc = float(tk.get("priceChangePercent", 0))
-        hcl = "#0ecb81" if hpc >= 0 else "#f6465d"
-        harr = "▲" if hpc >= 0 else "▼"
+@st.fragment(run_every=3)
+def render_header():
+    hc1, hc2, hc3 = st.columns([3, 4, 2])
+    with hc1:
+        logo_img = (f"<img src='data:image/png;base64,{LOGO}' "
+                    f"style='height:48px;width:auto;object-fit:contain;' alt='Applore'>") if LOGO else "🚀"
         st.markdown(f"""
-        <div style='display:flex;align-items:center;height:100%;padding-top:14px;gap:8px;'>
-            <span style='color:#f7931a;font-weight:700;font-size:13px;'>₿ BTC/USDT</span>
-            <span style='color:{hcl};font-size:1.3rem;font-weight:900;'>${hp:,.2f}</span>
-            <span style='color:{hcl};font-size:12px;font-weight:600;'>{harr} {abs(hpc):.2f}%</span>
+        <div style='display:flex;align-items:center;gap:12px;padding:6px 0;'>
+            {logo_img}
+            <div>
+                <div style='font-size:1.1rem;font-weight:800;color:#fff;letter-spacing:-.01em;line-height:1.2;'>Applore Technologies</div>
+                <div style='font-size:.82rem;font-weight:600;color:#a0a8b0;line-height:1.3;'>Trading POC</div>
+                <div style='color:#0ecb81;font-size:11px;font-weight:700;margin-top:2px;letter-spacing:.08em;'>● LIVE CONNECTION SECURED</div>
+            </div>
         </div>""", unsafe_allow_html=True)
+    with hc2:
+        tk = api_ticker()
+        if tk:
+            hp  = float(tk.get("lastPrice", 0))
+            hpc = float(tk.get("priceChangePercent", 0))
+            hcl = "#0ecb81" if hpc >= 0 else "#f6465d"
+            harr = "▲" if hpc >= 0 else "▼"
+            st.markdown(f"""
+            <div style='display:flex;align-items:center;height:100%;padding-top:14px;gap:8px;'>
+                <span style='color:#f7931a;font-weight:700;font-size:13px;'>₿ BTC/USDT</span>
+                <span style='color:{hcl};font-size:1.3rem;font-weight:900;'>${hp:,.2f}</span>
+                <span style='color:{hcl};font-size:12px;font-weight:600;'>{harr} {abs(hpc):.2f}%</span>
+            </div>""", unsafe_allow_html=True)
+    with hc3:
+        st.markdown(
+            f"<div style='text-align:right;font-size:11px;color:#848e9c;padding-top:22px;'>🕐 {datetime.now().strftime('%H:%M:%S IST')}</div>",
+            unsafe_allow_html=True)
+    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
-with hc3:
-    st.markdown(
-        f"<div style='text-align:right;font-size:11px;color:#848e9c;padding-top:22px;'>🕐 {datetime.now().strftime('%H:%M:%S IST')}</div>",
-        unsafe_allow_html=True)
-
-st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+render_header()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # NAVIGATION — st.tabs() — IMMUNE to st_autorefresh resets
@@ -321,394 +317,386 @@ st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 # TAB 1 — Portfolio & Executions
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab_portfolio:
-    st.markdown("<h1>💼 Investor Portfolio</h1>", unsafe_allow_html=True)
-    st.caption("Real-time portfolio tracking and automated trading visibility.")
+    @st.fragment(run_every=3)
+    def render_portfolio():
+        st.markdown("<h1>💼 Investor Portfolio</h1>", unsafe_allow_html=True)
+        st.caption("Real-time portfolio tracking and automated trading visibility.")
 
-    # P&L helpers
-    total_upnl = 0
-    for pos in st.session_state.positions:
-        cur = st.session_state.prices[pos["asset"]]
-        pnl = (cur-pos["entry"])*pos["size"] if pos["direction"]=="LONG" else (pos["entry"]-cur)*pos["size"]
-        total_upnl += pnl
-    total_rpnl  = sum(t["P&L"] for t in st.session_state.trade_hist)
-    total_equity = st.session_state.balance + total_rpnl + total_upnl
-
-    c1,c2,c3,c4 = st.columns(4)
-    c1.metric("Total Equity",          f"${total_equity:,.2f}")
-    c2.metric("Invested Capital",       f"${st.session_state.invested:,.2f}")
-    c3.metric("Unrealized P&L",
-              f"${total_upnl:+,.2f}",
-              f"{(total_upnl/st.session_state.invested)*100:+.2f}%",
-              delta_color="normal" if total_upnl>=0 else "inverse")
-    c4.metric("Realized P&L (All Time)",
-              f"${total_rpnl:+,.2f}",
-              delta_color="normal" if total_rpnl>=0 else "inverse")
-
-    st.markdown("---")
-    col1, col2 = st.columns([2,1])
-
-    with col1:
-        st.markdown("<div class='card'><div class='card-title'>🔴 Live Open Positions & AI Stop-Loss Tracking</div>", unsafe_allow_html=True)
-        rows = []
+        # P&L helpers
+        total_upnl = 0
         for pos in st.session_state.positions:
             cur = st.session_state.prices[pos["asset"]]
             pnl = (cur-pos["entry"])*pos["size"] if pos["direction"]=="LONG" else (pos["entry"]-cur)*pos["size"]
-            rows.append({
-                "Asset":           f"{pos['direction']} {pos['asset']}",
-                "Strategy":        pos["strategy"],
-                "Entry Price":     f"${pos['entry']:,.2f}",
-                "Live Price":      f"${cur:,.2f}",
-                "Unrealized P&L":  f"{'🟢 +' if pnl>0 else '🔴 -'}${abs(pnl):,.2f}",
-                "Stop-Loss":       f"${pos['sl_price']:,.2f} ({pos['sl_type']})",
+            total_upnl += pnl
+        total_rpnl  = sum(t["P&L"] for t in st.session_state.trade_hist)
+        total_equity = st.session_state.balance + total_rpnl + total_upnl
+
+        c1,c2,c3,c4 = st.columns(4)
+        c1.metric("Total Equity",          f"${total_equity:,.2f}")
+        c2.metric("Invested Capital",       f"${st.session_state.invested:,.2f}")
+        c3.metric("Unrealized P&L",
+                  f"${total_upnl:+,.2f}",
+                  f"{(total_upnl/st.session_state.invested)*100:+.2f}%",
+                  delta_color="normal" if total_upnl>=0 else "inverse")
+        c4.metric("Realized P&L (All Time)",
+                  f"${total_rpnl:+,.2f}",
+                  delta_color="normal" if total_rpnl>=0 else "inverse")
+
+        st.markdown("---")
+        col1, col2 = st.columns([2,1])
+
+        with col1:
+            st.markdown("<div class='card'><div class='card-title'>🔴 Live Open Positions & AI Stop-Loss Tracking</div>", unsafe_allow_html=True)
+            rows = []
+            for pos in st.session_state.positions:
+                cur = st.session_state.prices[pos["asset"]]
+                pnl = (cur-pos["entry"])*pos["size"] if pos["direction"]=="LONG" else (pos["entry"]-cur)*pos["size"]
+                rows.append({
+                    "Asset":           f"{pos['direction']} {pos['asset']}",
+                    "Strategy":        pos["strategy"],
+                    "Entry Price":     f"${pos['entry']:,.2f}",
+                    "Live Price":      f"${cur:,.2f}",
+                    "Unrealized P&L":  f"{'🟢 +' if pnl>0 else '🔴 -'}${abs(pnl):,.2f}",
+                    "Stop-Loss":       f"${pos['sl_price']:,.2f} ({pos['sl_type']})",
+                })
+            if rows:
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            else:
+                st.info("No open positions — strategy engine scanning markets…")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with col2:
+            st.markdown("<div class='card'><div class='card-title'>🥧 Portfolio Allocation</div>", unsafe_allow_html=True)
+            fig = go.Figure(data=[go.Pie(
+                labels=["Stablecoins","BTC","ETH","Altcoins"],
+                values=[st.session_state.balance-st.session_state.invested,
+                        st.session_state.invested*.5,
+                        st.session_state.invested*.3,
+                        st.session_state.invested*.2],
+                hole=.5, textinfo="percent",
+                marker=dict(colors=["#2b3139","#f7931a","#627eea","#00d4ff"]),
+            )])
+            fig.update_layout(margin=dict(t=0,b=0,l=0,r=0), paper_bgcolor="rgba(0,0,0,0)",
+                              font_color="#e0e0e0", showlegend=True,
+                              legend=dict(yanchor="bottom",y=-0.28,xanchor="center",x=0.5))
+            st.plotly_chart(fig, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("<div class='card'><div class='card-title'>📜 Engine Execution History</div>", unsafe_allow_html=True)
+        hist = []
+        for t in st.session_state.trade_hist:
+            hist.append({
+                "Execution Time":  t["Time"],
+                "Asset":           t["Asset"],
+                "Direction":       t["Direction"],
+                "Strategy":        t["Strategy"],
+                "Realized P&L":    f"{'🟢 +' if t['P&L']>0 else '🔴 -'}${abs(t['P&L']):,.2f}",
             })
-        if rows:
-            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-        else:
-            st.info("No open positions — strategy engine scanning markets…")
+        st.dataframe(pd.DataFrame(hist), use_container_width=True, hide_index=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    with col2:
-        st.markdown("<div class='card'><div class='card-title'>🥧 Portfolio Allocation</div>", unsafe_allow_html=True)
-        fig = go.Figure(data=[go.Pie(
-            labels=["Stablecoins","BTC","ETH","Altcoins"],
-            values=[st.session_state.balance-st.session_state.invested,
-                    st.session_state.invested*.5,
-                    st.session_state.invested*.3,
-                    st.session_state.invested*.2],
-            hole=.5, textinfo="percent",
-            marker=dict(colors=["#2b3139","#f7931a","#627eea","#00d4ff"]),
-        )])
-        fig.update_layout(margin=dict(t=0,b=0,l=0,r=0), paper_bgcolor="rgba(0,0,0,0)",
-                          font_color="#e0e0e0", showlegend=True,
-                          legend=dict(yanchor="bottom",y=-0.28,xanchor="center",x=0.5))
-        st.plotly_chart(fig, use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("<div class='card'><div class='card-title'>📜 Engine Execution History</div>", unsafe_allow_html=True)
-    hist = []
-    for t in st.session_state.trade_hist:
-        hist.append({
-            "Execution Time":  t["Time"],
-            "Asset":           t["Asset"],
-            "Direction":       t["Direction"],
-            "Strategy":        t["Strategy"],
-            "Realized P&L":    f"{'🟢 +' if t['P&L']>0 else '🔴 -'}${abs(t['P&L']):,.2f}",
-        })
-    st.dataframe(pd.DataFrame(hist), use_container_width=True, hide_index=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    render_portfolio()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 2 — Trading Terminal (LIVE BINANCE)
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab_terminal:
-    ticker = api_ticker("BTCUSDT")
-    depth  = api_depth("BTCUSDT", 16)
-    trades = api_trades("BTCUSDT", 22)
-    klines = api_klines("BTCUSDT", "5m", 80)
+    @st.fragment(run_every=3)
+    def render_terminal():
+        ticker = api_ticker("BTCUSDT")
+        depth  = api_depth("BTCUSDT", 16)
+        trades = api_trades("BTCUSDT", 22)
+        klines = api_klines("BTCUSDT", "5m", 80)
 
-    if not ticker:
-        st.error("⚠️  Cannot reach Binance API. Check your internet connection.")
-        st.stop()
+        if not ticker:
+            st.error("⚠️  Cannot reach Binance API. Check your internet connection.")
+            return
 
-    lp  = float(ticker.get("lastPrice",   0))
-    pc  = float(ticker.get("priceChangePercent", 0))
-    hi  = float(ticker.get("highPrice",   0))
-    lo  = float(ticker.get("lowPrice",    0))
-    vol = float(ticker.get("volume",      0))
-    qvol= float(ticker.get("quoteVolume", 0))
-    op  = float(ticker.get("openPrice",   0))
+        lp  = float(ticker.get("lastPrice",   0))
+        pc  = float(ticker.get("priceChangePercent", 0))
+        hi  = float(ticker.get("highPrice",   0))
+        lo  = float(ticker.get("lowPrice",    0))
+        vol = float(ticker.get("volume",      0))
+        qvol= float(ticker.get("quoteVolume", 0))
+        op  = float(ticker.get("openPrice",   0))
 
-    pc_col  = "#0ecb81" if pc >= 0 else "#f6465d"
-    pc_arr  = "▲" if pc >= 0 else "▼"
-    pc_sign = "+" if pc >= 0 else ""
+        pc_col  = "#0ecb81" if pc >= 0 else "#f6465d"
+        pc_arr  = "▲" if pc >= 0 else "▼"
+        pc_sign = "+" if pc >= 0 else ""
 
-    # Price flash
-    prev = st.session_state.prev_btc
-    flash = ("flash-up" if lp > prev else "flash-down") if prev and prev != lp else ""
-    st.session_state.prev_btc = lp
+        # Price flash
+        prev = st.session_state.get("prev_btc_term", lp)
+        flash = ("flash-up" if lp > prev else "flash-down") if prev and prev != lp else ""
+        st.session_state.prev_btc_term = lp
 
-    # ── Ticker bar ──
-    st.markdown(f"""
-    <div class='ticker-strip'>
-        <div style='margin-right:24px;'>
-            <div style='font-size:1rem;font-weight:800;color:#fff;'>BTC<span style='color:#848e9c;'>/USDT</span></div>
-            <div style='font-size:.7rem;color:#f7931a;'>Binance Spot · Live</div>
-        </div>
-        <div class='sbox'>
-            <span class='{flash}' style='color:{pc_col};font-size:1.7rem;font-weight:900;letter-spacing:-.02em;'>${lp:,.2f}</span>
-            <span class='slbl'>≈ ${lp:,.2f} USD</span>
-        </div>
-        <span class='tick-sep'>|</span>
-        <div class='sbox'><span class='slbl'>24h Change</span>
-            <span style='color:{pc_col};font-weight:700;'>{pc_arr} {pc_sign}{pc:.2f}%</span></div>
-        <span class='tick-sep'>|</span>
-        <div class='sbox'><span class='slbl'>24h High</span><span class='sval'>${hi:,.2f}</span></div>
-        <span class='tick-sep'>|</span>
-        <div class='sbox'><span class='slbl'>24h Low</span><span class='sval'>${lo:,.2f}</span></div>
-        <span class='tick-sep'>|</span>
-        <div class='sbox'><span class='slbl'>24h Vol (BTC)</span><span class='sval'>{vol:,.1f}</span></div>
-        <span class='tick-sep'>|</span>
-        <div class='sbox'><span class='slbl'>24h Vol (USDT)</span><span class='sval'>${qvol/1e9:.2f}B</span></div>
-        <span class='tick-sep'>|</span>
-        <div class='sbox'><span class='slbl'>Open</span><span class='sval'>${op:,.2f}</span></div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── Main grid ──
-    col_ob, col_chart, col_tr = st.columns([1.1, 2.3, 1.1])
-
-    # AI Signal Engine Logic (Calculated live on the 5m Klines + Depth)
-    signal = "NEUTRAL"
-    sig_color = "#848e9c"
-    conf = 50
-    reasons = []
-
-    if klines and len(klines) > 20:
-        closes = [float(k[4]) for k in klines]
-        volumes = [float(k[5]) for k in klines]
-        
-        # 1. Short-term trend (Simple EMA 9 vs 21 approx)
-        ema9 = pd.Series(closes).ewm(span=9, adjust=False).mean().iloc[-1]
-        ema21 = pd.Series(closes).ewm(span=21, adjust=False).mean().iloc[-1]
-        
-        # 2. RSI (14 period approx)
-        deltas = np.diff(closes[-15:])
-        gains = deltas[deltas > 0].sum()
-        losses = -deltas[deltas < 0].sum()
-        rs = 0 if losses == 0 else gains/losses
-        rsi = 100 - (100 / (1 + rs))
-
-        # 3. Orderbook Imbalance
-        asks_raw = depth.get("asks", [])[:14]
-        bids_raw = depth.get("bids", [])[:14]
-        bid_vol = sum(float(q) for _,q in bids_raw)
-        ask_vol = sum(float(q) for _,q in asks_raw)
-        tot_vol = bid_vol + ask_vol or 1
-        bid_pct = bid_vol / tot_vol
-        
-        scores = 0
-        
-        # Trend rule
-        if ema9 > ema21:
-            scores += 30
-            reasons.append("EMA 9/21 Bullish Cross")
-        else:
-            scores -= 30
-            reasons.append("EMA 9/21 Bearish Cross")
-
-        # RSI rule
-        if rsi < 30:
-            scores += 40
-            reasons.append(f"RSI Oversold ({rsi:.1f})")
-        elif rsi > 70:
-            scores -= 40
-            reasons.append(f"RSI Overbought ({rsi:.1f})")
-        else:
-            reasons.append(f"RSI Neutral ({rsi:.1f})")
-
-        # OB rule
-        if bid_pct > 0.6:
-            scores += 30
-            reasons.append("Heavy Buy Wall (Orderbook)")
-        elif bid_pct < 0.4:
-            scores -= 30
-            reasons.append("Heavy Sell Wall (Orderbook)")
-
-        conf = min(100, max(0, 50 + scores))
-        if conf >= 65:
-            signal, sig_color = "STRONG BUY", "#0ecb81"
-        elif conf <= 35:
-            signal, sig_color = "STRONG SELL", "#f6465d"
-        elif conf >= 55:
-            signal, sig_color = "BUY", "#0ecb81"
-        elif conf <= 45:
-            signal, sig_color = "SELL", "#f6465d"
-
-    # ── Order Book ──
-    with col_ob:
-        st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>📖 Order Book</div>", unsafe_allow_html=True)
-
-        asks_raw = depth.get("asks", [])[:14]
-        bids_raw = depth.get("bids", [])[:14]
-        all_sz   = [float(q) for _,q in asks_raw+bids_raw]
-        max_sz   = max(all_sz) if all_sz else 1
-
-        hdr = ("<div style='display:flex;justify-content:space-between;color:#5a6370;"
-               "font-size:10px;margin-bottom:4px;padding:0 4px;'>"
-               "<span style='width:90px'>Price(USDT)</span>"
-               "<span style='width:72px;text-align:right'>Size(BTC)</span>"
-               "<span style='width:68px;text-align:right'>Total</span></div>")
-
-        ask_html = ""
-        cum = 0.0
-        for p,q in reversed(asks_raw):
-            fp, fq = float(p), float(q)
-            cum   += fq
-            pct    = fq/max_sz*100
-            ask_html += (f"<div class='ob-row' style='position:relative;'>"
-                         f"<div class='ob-bar ob-ask-bar' style='width:{pct:.1f}%;'></div>"
-                         f"<span class='ob-price-ask'>{fp:,.2f}</span>"
-                         f"<span class='ob-qty'>{fq:.4f}</span>"
-                         f"<span class='ob-total'>{cum:.3f}</span></div>")
-
-        sp  = float(asks_raw[0][0])-float(bids_raw[0][0]) if asks_raw and bids_raw else 0
-        spp = sp/lp*100 if lp else 0
-        mid = (f"<div style='display:flex;justify-content:space-between;align-items:center;"
-               f"margin:4px 0;background:#1f2933;border-radius:4px;padding:3px 8px;'>"
-               f"<span style='color:#848e9c;font-size:10px;'>Spread</span>"
-               f"<span style='color:{pc_col};font-size:14px;font-weight:900;'>${lp:,.2f}</span>"
-               f"<span style='color:#848e9c;font-size:10px;'>{sp:.2f} ({spp:.3f}%)</span></div>")
-
-        bid_html = ""
-        cum = 0.0
-        for p,q in bids_raw:
-            fp, fq = float(p), float(q)
-            cum   += fq
-            pct    = fq/max_sz*100
-            bid_html += (f"<div class='ob-row' style='position:relative;'>"
-                         f"<div class='ob-bar ob-bid-bar' style='width:{pct:.1f}%;'></div>"
-                         f"<span class='ob-price-bid'>{fp:,.2f}</span>"
-                         f"<span class='ob-qty'>{fq:.4f}</span>"
-                         f"<span class='ob-total'>{cum:.3f}</span></div>")
-
-        st.markdown(f"<div style='font-family:monospace;'>{hdr}{ask_html}{mid}{bid_html}</div>",
-                    unsafe_allow_html=True)
-
-        # Depth ratio bar
-        bid_vol = sum(float(q) for _,q in bids_raw)
-        ask_vol = sum(float(q) for _,q in asks_raw)
-        tot_vol = bid_vol+ask_vol or 1
-        bid_pct = bid_vol/tot_vol*100
-        ask_pct = ask_vol/tot_vol*100
+        # ── Ticker bar ──
         st.markdown(f"""
-        <div style='margin-top:12px;'>
-          <div style='display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;'>
-            <span style='color:#0ecb81;font-weight:600;'>Bids {bid_pct:.1f}%</span>
-            <span style='color:#f6465d;font-weight:600;'>Asks {ask_pct:.1f}%</span>
-          </div>
-          <div style='display:flex;height:7px;border-radius:4px;overflow:hidden;'>
-            <div style='width:{bid_pct:.1f}%;background:#0ecb81;'></div>
-            <div style='width:{ask_pct:.1f}%;background:#f6465d;'></div>
-          </div>
-          <div style='font-size:10px;color:#848e9c;margin-top:5px;'>
-            Bid: {bid_vol:.3f} BTC &nbsp;|&nbsp; Ask: {ask_vol:.3f} BTC
-          </div>
+        <div class='ticker-strip'>
+            <div style='margin-right:24px;'>
+                <div style='font-size:1rem;font-weight:800;color:#fff;'>BTC<span style='color:#848e9c;'>/USDT</span></div>
+                <div style='font-size:.7rem;color:#f7931a;'>Binance Spot · Live</div>
+            </div>
+            <div class='sbox'>
+                <span class='{flash}' style='color:{pc_col};font-size:1.7rem;font-weight:900;letter-spacing:-.02em;'>${lp:,.2f}</span>
+                <span class='slbl'>≈ ${lp:,.2f} USD</span>
+            </div>
+            <span class='tick-sep'>|</span>
+            <div class='sbox'><span class='slbl'>24h Change</span>
+                <span style='color:{pc_col};font-weight:700;'>{pc_arr} {pc_sign}{pc:.2f}%</span></div>
+            <span class='tick-sep'>|</span>
+            <div class='sbox'><span class='slbl'>24h High</span><span class='sval'>${hi:,.2f}</span></div>
+            <span class='tick-sep'>|</span>
+            <div class='sbox'><span class='slbl'>24h Low</span><span class='sval'>${lo:,.2f}</span></div>
+            <span class='tick-sep'>|</span>
+            <div class='sbox'><span class='slbl'>24h Vol (BTC)</span><span class='sval'>{vol:,.1f}</span></div>
+            <span class='tick-sep'>|</span>
+            <div class='sbox'><span class='slbl'>24h Vol (USDT)</span><span class='sval'>${qvol/1e9:.2f}B</span></div>
+            <span class='tick-sep'>|</span>
+            <div class='sbox'><span class='slbl'>Open</span><span class='sval'>${op:,.2f}</span></div>
         </div>
         """, unsafe_allow_html=True)
 
-    # ── Candlestick chart + AI Nudges + order form ──
-    with col_chart:
-        c_title, c_sig = st.columns([3, 2])
-        c_title.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>📊 BTC/USDT — 5m Live Candlestick</div>", unsafe_allow_html=True)
-        
-        # Render AI Signal
-        c_sig.markdown(f"""
-        <div style='background:#1f2933; border:1px solid #2b3139; border-radius:6px; padding:6px 12px; display:flex; justify-content:space-between; align-items:center;'>
-            <span style='color:#848e9c; font-size:11px; font-weight:600;'>AI NUDGE:</span>
-            <span style='color:{sig_color}; font-weight:900; font-size:14px; letter-spacing:1px;'>{signal}</span>
-            <span style='color:#fff; font-size:12px; font-weight:700;'>{conf}% Conf</span>
-        </div>
-        """, unsafe_allow_html=True)
+        # ── Main grid ──
+        col_ob, col_chart, col_tr = st.columns([1.1, 2.3, 1.1])
 
-        if klines:
-            df = pd.DataFrame(klines, columns=["ot","o","h","l","c","v","ct","qav","nt","tbbav","tbqav","ig"])
-            df["ot"] = pd.to_datetime(df["ot"], unit="ms")
-            for col in ["o","h","l","c","v"]:
-                df[col] = df[col].astype(float)
+        # AI Signal Engine Logic (Calculated live on the 5m Klines + Depth)
+        signal = "NEUTRAL"
+        sig_color = "#848e9c"
+        conf = 50
+        reasons = []
 
-            vcols = ["#0ecb81" if c>=o else "#f6465d" for o,c in zip(df["o"],df["c"])]
-            fig   = go.Figure()
-            fig.add_trace(go.Candlestick(
-                x=df["ot"], open=df["o"], high=df["h"], low=df["l"], close=df["c"],
-                name="Price",
-                increasing=dict(line=dict(color="#0ecb81",width=1), fillcolor="#0ecb81"),
-                decreasing=dict(line=dict(color="#f6465d",width=1), fillcolor="#f6465d"),
-            ))
-            fig.add_trace(go.Bar(
-                x=df["ot"], y=df["v"], name="Vol",
-                marker_color=vcols, opacity=0.35, yaxis="y2",
-            ))
-            fig.update_layout(
-                margin=dict(l=0,r=0,t=0,b=0), height=380,
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font=dict(color="#848e9c",size=11),
-                xaxis_rangeslider_visible=False,
-                xaxis=dict(gridcolor="#1a1f26",showgrid=True,zeroline=False),
-                yaxis=dict(gridcolor="#1a1f26",showgrid=True,side="right",zeroline=False),
-                yaxis2=dict(overlaying="y",side="left",showgrid=False,showticklabels=False,
-                            range=[0, df["v"].max()*5]),
-                legend=dict(orientation="h",yanchor="bottom",y=1.01,xanchor="right",x=1,
-                            font=dict(size=10),bgcolor="rgba(0,0,0,0)"),
-                hovermode="x unified",
-            )
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar":False})
-        else:
-            st.warning("Could not load kline data from Binance.")
-
-        # Order form
-        st.markdown("<div class='card-title' style='font-size:13px;margin-top:8px;margin-bottom:8px;'>⚡ Spot Trading (Simulated)</div>", unsafe_allow_html=True)
-        oc1, oc2 = st.columns(2)
-        
-        def ex_buy():
-            cost = st.session_state.bp * st.session_state.ba
-            if (st.session_state.balance - st.session_state.invested) >= cost:
-                st.session_state.balance -= cost
-                st.session_state.btc_bag += st.session_state.ba
-                st.session_state.trade_hist.insert(0, {
-                    "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "Asset": "BTC", "Strategy": "Manual Trade", "Direction": "BUY", "P&L": 0.0
-                })
-                st.session_state.notifs.insert(0, f"✅ Executed Manual BUY of {st.session_state.ba:.4f} BTC at ${st.session_state.bp:,.2f}")
-                
-        def ex_sell():
-            rev = st.session_state.sp2 * st.session_state.sa
-            if st.session_state.btc_bag >= st.session_state.sa:
-                st.session_state.btc_bag -= st.session_state.sa
-                st.session_state.balance += rev
-                st.session_state.trade_hist.insert(0, {
-                    "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "Asset": "BTC", "Strategy": "Manual Trade", "Direction": "SELL", "P&L": 0.0
-                })
-                st.session_state.notifs.insert(0, f"✅ Executed Manual SELL of {st.session_state.sa:.4f} BTC at ${st.session_state.sp2:,.2f}")
-
-        with oc1:
-            av_u = st.session_state.balance - st.session_state.invested
-            st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>BUY BTC &nbsp;|&nbsp; Avbl: {av_u:,.2f} USDT</div>", unsafe_allow_html=True)
-            bp  = st.number_input("Price (USDT)",   value=lp,  step=10.0, format="%.2f", key="bp", min_value=0.0)
-            ba  = st.number_input("Amount (BTC)",   value=0.01, step=0.001, format="%.4f", key="ba", min_value=0.0)
-            st.markdown(f"<div style='font-size:11px;color:#848e9c;margin-bottom:6px;'>Total ≈ ${bp*ba:,.2f} USDT</div>", unsafe_allow_html=True)
-            st.button("▲ Buy / Long BTC", key="b_btn", use_container_width=True, on_click=ex_buy, type="primary")
+        if klines and len(klines) > 20:
+            closes = [float(k[4]) for k in klines]
+            volumes = [float(k[5]) for k in klines]
             
-        with oc2:
-            st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>SELL BTC &nbsp;|&nbsp; Avbl: {st.session_state.btc_bag:.4f} BTC</div>", unsafe_allow_html=True)
-            sp2 = st.number_input("Price (USDT) ",  value=lp,  step=10.0, format="%.2f", key="sp2", min_value=0.0)
-            sa  = st.number_input("Amount (BTC) ",  value=0.01, step=0.001, format="%.4f", key="sa", min_value=0.0)
-            st.markdown(f"<div style='font-size:11px;color:#848e9c;margin-bottom:6px;'>Total ≈ ${sp2*sa:,.2f} USDT</div>", unsafe_allow_html=True)
-            st.button("▼ Sell / Short BTC", key="s_btn", use_container_width=True, on_click=ex_sell, type="primary")
+            # 1. Short-term trend
+            ema9 = pd.Series(closes).ewm(span=9, adjust=False).mean().iloc[-1]
+            ema21 = pd.Series(closes).ewm(span=21, adjust=False).mean().iloc[-1]
+            
+            # 2. RSI
+            deltas = np.diff(closes[-15:])
+            gains = deltas[deltas > 0].sum()
+            losses = -deltas[deltas < 0].sum()
+            rs = 0 if losses == 0 else gains/losses
+            rsi = 100 - (100 / (1 + rs))
 
-    # ── Market Trades & AI Reasnoning ──
-    with col_tr:
-        st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>🧠 AI Engine Reasoning</div>", unsafe_allow_html=True)
-        reason_html = "".join([f"<div style='font-size:11px; color:#e0e0e0; margin-bottom:4px; padding-left:8px; border-left:2px solid {sig_color};'>{r}</div>" for r in reasons])
-        st.markdown(f"<div style='background:#161a1e; border:1px solid #2b3139; border-radius:6px; padding:10px; margin-bottom:20px;'>{reason_html}</div>", unsafe_allow_html=True)
+            # 3. Orderbook Imbalance
+            asks_raw = depth.get("asks", [])[:14]
+            bids_raw = depth.get("bids", [])[:14]
+            bid_vol = sum(float(q) for _,q in bids_raw)
+            ask_vol = sum(float(q) for _,q in asks_raw)
+            tot_vol = bid_vol + ask_vol or 1
+            bid_pct = bid_vol / tot_vol
+            
+            scores = 0
+            
+            if ema9 > ema21:
+                scores += 30
+                reasons.append("EMA 9/21 Bullish Cross")
+            else:
+                scores -= 30
+                reasons.append("EMA 9/21 Bearish Cross")
 
-        st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>⚡ Live Market Trades</div>", unsafe_allow_html=True)
-        tr_hdr = ("<div style='display:flex;justify-content:space-between;color:#5a6370;"
-                  "font-size:10px;margin-bottom:4px;'>"
-                  "<span>Price(USDT)</span><span>Qty</span><span>Time</span></div>")
-        tr_rows = ""
-        for t in trades:
-            tp  = float(t["price"])
-            tq  = float(t["qty"])
-            tt  = pd.to_datetime(t["time"], unit="ms").strftime("%H:%M:%S")
-            tcl = "color:#f6465d" if t.get("isBuyerMaker") else "color:#0ecb81"
-            tr_rows += (f"<div class='trade-row'>"
-                        f"<span style='{tcl};'>{tp:,.2f}</span>"
-                        f"<span style='color:#848e9c;'>{tq:.4f}</span>"
-                        f"<span style='color:#5a6370;'>{tt}</span></div>")
-        st.markdown(f"<div style='font-family:monospace;'>{tr_hdr}{tr_rows}</div>",
-                    unsafe_allow_html=True)
+            if rsi < 30:
+                scores += 40
+                reasons.append(f"RSI Oversold ({rsi:.1f})")
+            elif rsi > 70:
+                scores -= 40
+                reasons.append(f"RSI Overbought ({rsi:.1f})")
+            else:
+                reasons.append(f"RSI Neutral ({rsi:.1f})")
+
+            if bid_pct > 0.6:
+                scores += 30
+                reasons.append("Heavy Buy Wall (Orderbook)")
+            elif bid_pct < 0.4:
+                scores -= 30
+                reasons.append("Heavy Sell Wall (Orderbook)")
+
+            conf = min(100, max(0, 50 + scores))
+            if conf >= 65:
+                signal, sig_color = "STRONG BUY", "#0ecb81"
+            elif conf <= 35:
+                signal, sig_color = "STRONG SELL", "#f6465d"
+            elif conf >= 55:
+                signal, sig_color = "BUY", "#0ecb81"
+            elif conf <= 45:
+                signal, sig_color = "SELL", "#f6465d"
+
+        # ── Order Book ──
+        with col_ob:
+            st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>📖 Order Book</div>", unsafe_allow_html=True)
+            asks_raw = depth.get("asks", [])[:14]
+            bids_raw = depth.get("bids", [])[:14]
+            all_sz   = [float(q) for _,q in asks_raw+bids_raw]
+            max_sz   = max(all_sz) if all_sz else 1
+
+            hdr = ("<div style='display:flex;justify-content:space-between;color:#5a6370;"
+                   "font-size:10px;margin-bottom:4px;padding:0 4px;'>"
+                   "<span style='width:90px'>Price(USDT)</span>"
+                   "<span style='width:72px;text-align:right'>Size(BTC)</span>"
+                   "<span style='width:68px;text-align:right'>Total</span></div>")
+
+            ask_html = ""
+            cum = 0.0
+            for p,q in reversed(asks_raw):
+                fp, fq = float(p), float(q)
+                cum   += fq
+                pct    = fq/max_sz*100
+                ask_html += (f"<div class='ob-row' style='position:relative;'>"
+                             f"<div class='ob-bar ob-ask-bar' style='width:{pct:.1f}%;'></div>"
+                             f"<span class='ob-price-ask'>{fp:,.2f}</span>"
+                             f"<span class='ob-qty'>{fq:.4f}</span>"
+                             f"<span class='ob-total'>{cum:.3f}</span></div>")
+
+            sp  = float(asks_raw[0][0])-float(bids_raw[0][0]) if asks_raw and bids_raw else 0
+            spp = sp/lp*100 if lp else 0
+            mid = (f"<div style='display:flex;justify-content:space-between;align-items:center;"
+                   f"margin:4px 0;background:#1f2933;border-radius:4px;padding:3px 8px;'>"
+                   f"<span style='color:#848e9c;font-size:10px;'>Spread</span>"
+                   f"<span style='color:{pc_col};font-size:14px;font-weight:900;'>${lp:,.2f}</span>"
+                   f"<span style='color:#848e9c;font-size:10px;'>{sp:.2f} ({spp:.3f}%)</span></div>")
+
+            bid_html = ""
+            cum = 0.0
+            for p,q in bids_raw:
+                fp, fq = float(p), float(q)
+                cum   += fq
+                pct    = fq/max_sz*100
+                bid_html += (f"<div class='ob-row' style='position:relative;'>"
+                             f"<div class='ob-bar ob-bid-bar' style='width:{pct:.1f}%;'></div>"
+                             f"<span class='ob-price-bid'>{fp:,.2f}</span>"
+                             f"<span class='ob-qty'>{fq:.4f}</span>"
+                             f"<span class='ob-total'>{cum:.3f}</span></div>")
+
+            st.markdown(f"<div style='font-family:monospace;'>{hdr}{ask_html}{mid}{bid_html}</div>", unsafe_allow_html=True)
+            bid_vol = sum(float(q) for _,q in bids_raw)
+            ask_vol = sum(float(q) for _,q in asks_raw)
+            tot_vol = bid_vol+ask_vol or 1
+            bid_pct = bid_vol/tot_vol*100
+            ask_pct = ask_vol/tot_vol*100
+            st.markdown(f"""
+            <div style='margin-top:12px;'>
+              <div style='display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;'>
+                <span style='color:#0ecb81;font-weight:600;'>Bids {bid_pct:.1f}%</span>
+                <span style='color:#f6465d;font-weight:600;'>Asks {ask_pct:.1f}%</span>
+              </div>
+              <div style='display:flex;height:7px;border-radius:4px;overflow:hidden;'>
+                <div style='width:{bid_pct:.1f}%;background:#0ecb81;'></div>
+                <div style='width:{ask_pct:.1f}%;background:#f6465d;'></div>
+              </div>
+              <div style='font-size:10px;color:#848e9c;margin-top:5px;'>
+                Bid: {bid_vol:.3f} BTC &nbsp;|&nbsp; Ask: {ask_vol:.3f} BTC
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col_chart:
+            c_title, c_sig = st.columns([3, 2])
+            c_title.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>📊 BTC/USDT — 5m Live Candlestick</div>", unsafe_allow_html=True)
+            c_sig.markdown(f"""
+            <div style='background:#1f2933; border:1px solid #2b3139; border-radius:6px; padding:6px 12px; display:flex; justify-content:space-between; align-items:center;'>
+                <span style='color:#848e9c; font-size:11px; font-weight:600;'>AI NUDGE:</span>
+                <span style='color:{sig_color}; font-weight:900; font-size:14px; letter-spacing:1px;'>{signal}</span>
+                <span style='color:#fff; font-size:12px; font-weight:700;'>{conf}% Conf</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if klines:
+                df = pd.DataFrame(klines, columns=["ot","o","h","l","c","v","ct","qav","nt","tbbav","tbqav","ig"])
+                df["ot"] = pd.to_datetime(df["ot"], unit="ms")
+                for col in ["o","h","l","c","v"]:
+                    df[col] = df[col].astype(float)
+
+                vcols = ["#0ecb81" if c>=o else "#f6465d" for o,c in zip(df["o"],df["c"])]
+                fig   = go.Figure()
+                fig.add_trace(go.Candlestick(
+                    x=df["ot"], open=df["o"], high=df["h"], low=df["l"], close=df["c"],
+                    name="Price",
+                    increasing=dict(line=dict(color="#0ecb81",width=1), fillcolor="#0ecb81"),
+                    decreasing=dict(line=dict(color="#f6465d",width=1), fillcolor="#f6465d"),
+                ))
+                fig.add_trace(go.Bar(
+                    x=df["ot"], y=df["v"], name="Vol",
+                    marker_color=vcols, opacity=0.35, yaxis="y2",
+                ))
+                fig.update_layout(
+                    margin=dict(l=0,r=0,t=0,b=0), height=380,
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                    font=dict(color="#848e9c",size=11),
+                    xaxis_rangeslider_visible=False,
+                    xaxis=dict(gridcolor="#1a1f26",showgrid=True,zeroline=False),
+                    yaxis=dict(gridcolor="#1a1f26",showgrid=True,side="right",zeroline=False),
+                    yaxis2=dict(overlaying="y",side="left",showgrid=False,showticklabels=False,
+                                range=[0, df["v"].max()*5]),
+                    legend=dict(orientation="h",yanchor="bottom",y=1.01,xanchor="right",x=1,
+                                font=dict(size=10),bgcolor="rgba(0,0,0,0)"),
+                    hovermode="x unified",
+                )
+                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar":False})
+
+            st.markdown("<div class='card-title' style='font-size:13px;margin-top:8px;margin-bottom:8px;'>⚡ Spot Trading (Simulated)</div>", unsafe_allow_html=True)
+            oc1, oc2 = st.columns(2)
+            
+            def ex_buy():
+                cost = st.session_state.bp * st.session_state.ba
+                if (st.session_state.balance - st.session_state.invested) >= cost:
+                    st.session_state.balance -= cost
+                    st.session_state.btc_bag += st.session_state.ba
+                    st.session_state.trade_hist.insert(0, {
+                        "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "Asset": "BTC", "Strategy": "Manual Trade", "Direction": "BUY", "P&L": 0.0
+                    })
+                    st.session_state.notifs.insert(0, f"✅ Executed Manual BUY of {st.session_state.ba:.4f} BTC at ${st.session_state.bp:,.2f}")
+                    
+            def ex_sell():
+                rev = st.session_state.sp2 * st.session_state.sa
+                if st.session_state.btc_bag >= st.session_state.sa:
+                    st.session_state.btc_bag -= st.session_state.sa
+                    st.session_state.balance += rev
+                    st.session_state.trade_hist.insert(0, {
+                        "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "Asset": "BTC", "Strategy": "Manual Trade", "Direction": "SELL", "P&L": 0.0
+                    })
+                    st.session_state.notifs.insert(0, f"✅ Executed Manual SELL of {st.session_state.sa:.4f} BTC at ${st.session_state.sp2:,.2f}")
+
+            with oc1:
+                av_u = st.session_state.balance - st.session_state.invested
+                st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>BUY BTC &nbsp;|&nbsp; Avbl: {av_u:,.2f} USDT</div>", unsafe_allow_html=True)
+                bp  = st.number_input("Price (USDT)",   value=lp,  step=10.0, format="%.2f", key="bp", min_value=0.0)
+                ba  = st.number_input("Amount (BTC)",   value=0.01, step=0.001, format="%.4f", key="ba", min_value=0.0)
+                st.markdown(f"<div style='font-size:11px;color:#848e9c;margin-bottom:6px;'>Total ≈ ${bp*ba:,.2f} USDT</div>", unsafe_allow_html=True)
+                st.button("▲ Buy / Long BTC", key="b_btn", use_container_width=True, on_click=ex_buy, type="primary")
+            with oc2:
+                st.markdown(f"<div style='color:#f7931a;font-size:12px;font-weight:600;margin-bottom:4px;'>SELL BTC &nbsp;|&nbsp; Avbl: {st.session_state.btc_bag:.4f} BTC</div>", unsafe_allow_html=True)
+                sp2 = st.number_input("Price (USDT) ",  value=lp,  step=10.0, format="%.2f", key="sp2", min_value=0.0)
+                sa  = st.number_input("Amount (BTC) ",  value=0.01, step=0.001, format="%.4f", key="sa", min_value=0.0)
+                st.markdown(f"<div style='font-size:11px;color:#848e9c;margin-bottom:6px;'>Total ≈ ${sp2*sa:,.2f} USDT</div>", unsafe_allow_html=True)
+                st.button("▼ Sell / Short BTC", key="s_btn", use_container_width=True, on_click=ex_sell, type="primary")
+
+        with col_tr:
+            st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>🧠 AI Engine Reasoning</div>", unsafe_allow_html=True)
+            reason_html = "".join([f"<div style='font-size:11px; color:#e0e0e0; margin-bottom:4px; padding-left:8px; border-left:2px solid {sig_color};'>{r}</div>" for r in reasons])
+            st.markdown(f"<div style='background:#161a1e; border:1px solid #2b3139; border-radius:6px; padding:10px; margin-bottom:20px;'>{reason_html}</div>", unsafe_allow_html=True)
+
+            st.markdown("<div class='card-title' style='font-size:13px;margin-bottom:8px;'>⚡ Live Market Trades</div>", unsafe_allow_html=True)
+            tr_hdr = ("<div style='display:flex;justify-content:space-between;color:#5a6370;"
+                      "font-size:10px;margin-bottom:4px;'>"
+                      "<span>Price(USDT)</span><span>Qty</span><span>Time</span></div>")
+            tr_rows = ""
+            for t in trades:
+                tp  = float(t["price"])
+                tq  = float(t["qty"])
+                tt  = pd.to_datetime(t["time"], unit="ms").strftime("%H:%M:%S")
+                tcl = "color:#f6465d" if t.get("isBuyerMaker") else "color:#0ecb81"
+                tr_rows += (f"<div class='trade-row'>"
+                            f"<span style='{tcl};'>{tp:,.2f}</span>"
+                            f"<span style='color:#848e9c;'>{tq:.4f}</span>"
+                            f"<span style='color:#5a6370;'>{tt}</span></div>")
+            st.markdown(f"<div style='font-family:monospace;'>{tr_hdr}{tr_rows}</div>", unsafe_allow_html=True)
+    
+    render_terminal()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
