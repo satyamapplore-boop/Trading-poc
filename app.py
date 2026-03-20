@@ -583,6 +583,7 @@ with tab_terminal:
                         st.session_state.notifs.insert(0, f"✅ Executed Manual SELL of {sa:.4f} {a} at ${sp2:,.4f}")
                         st.rerun()
                         
+        render_form()
         # Form fragment complete
 
     with col_tr:
